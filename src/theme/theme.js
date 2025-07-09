@@ -338,6 +338,60 @@ export const sudanHeritageTheme = createTheme({
   shape: { borderRadius: 18 },
 });
 
+// Green Heart Theme: Inspired by the green-yellow logo (tempLogo.png)
+export const greenHeartTheme = createTheme({
+  palette: {
+    mode: "light",
+    primary: {
+      main: "#4CAF50", // Green
+      light: "#A8E063", // Light green
+      dark: "#27632A", // Dark green
+      contrastText: "#fff",
+    },
+    secondary: {
+      main: "#F7D358", // Yellow
+      light: "#FFF9C4",
+      dark: "#B2A429",
+      contrastText: "#222",
+    },
+    accent: {
+      main: "#A8E063", // Light green accent
+    },
+    background: {
+      default: "#F9FFF6", // Very light green/white
+      paper: "#fff",
+    },
+    text: {
+      primary: "#222",
+      secondary: "#388E3C",
+      disabled: "#A8A8A8",
+    },
+    divider: "#E0E0E0",
+    error: {
+      main: "#E53935",
+    },
+    warning: {
+      main: "#FBC02D",
+    },
+    info: {
+      main: "#4FC3F7",
+    },
+    success: {
+      main: "#43A047",
+    },
+  },
+  typography: {
+    fontFamily: "Inter, Noto Sans Arabic, Arial, sans-serif",
+    h1: { fontWeight: 800, color: "#4CAF50" },
+    h2: { fontWeight: 700, color: "#F7D358" },
+    h3: { fontWeight: 600, color: "#388E3C" },
+    h4: { fontWeight: 600, color: "#27632A" },
+    body1: { fontWeight: 400, fontSize: "1.1rem", color: "#222" },
+    button: { fontWeight: 700, fontSize: "1rem", textTransform: "none" },
+  },
+  shape: { borderRadius: 14 },
+});
+
 export const toastOptions = {
   duration: 4000,
   style: {

@@ -1,0 +1,426 @@
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  serverTimestamp,
+  doc,
+  updateDoc,
+  increment,
+} from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import toast from "react-hot-toast";
+
+// --- Validation Schema ---
+const donationSchema = yup
+  .object({
+    donorName: yup.string().required("اسم المتبرع مطلوب"),
+    donorPhone: yup
+      .string()
+      .matches(/^\d{8,15}$/, "رقم الهاتف غير صحيح")
+      .required("رقم الهاتف مطلوب"),
+    amount: yup
+      .number()
+      .typeError("الرجاء إدخال مبلغ صحيح")
+      .positive("يجب أن يكون المبلغ أكبر من صفر")
+      .required("المبلغ مطلوب"),
+    campaignId: yup.string().required("الرجاء اختيار حملة"),
+    status: yup.string().oneOf(["pending", "completed", "failed"]).required("الرجاء اختيار حالة التبرع"),
+    isAnonymous: yup.boolean().notRequired(),
+    donationType: yup.string().oneOf(["one-time", "recurring"]).required(),
+    recurringInterval: yup.string().when("donationType", {
+      is: "recurring",
+      then: (schema) =>
+        schema
+          .oneOf(["monthly", "yearly"])
+          .required("الرجاء تحديد فترة التكرار"),
+      otherwise: (schema) => schema.notRequired(),
+    }),
+    notes: yup.string(),
+  })
+  .required();
+
+export default function AddDonationForm({ onCancel, onSubmit }) {
+  const [campaigns, setCampaigns] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+    watch,
+  } = useForm({
+    resolver: yupResolver(donationSchema),
+    defaultValues: {
+      donationType: "one-time",
+      status: "pending", // Default to pending instead of completed
+    },
+  });
+
+  const donationType = watch("donationType");
+
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      try {
+        const db = getFirestore();
+        const snapshot = await getDocs(collection(db, "campaigns"));
+        const activeCampaigns = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setCampaigns(activeCampaigns);
+      } catch (error) {
+        console.error("Error fetching campaigns:", error);
+        toast.error("فشل في تحميل الحملات.");
+      }
+    };
+    fetchCampaigns();
+  }, []);
+
+  const handleFormSubmit = async (data) => {
+    setIsLoading(true);
+    const toastId = toast.loading("جاري إضافة التبرع...");
+    try {
+      const db = getFirestore();
+      const auth = getAuth();
+      const user = auth.currentUser;
+      const donationData = {
+        donorName: data.isAnonymous ? "فاعل خير" : data.donorName,
+        donorPhone: data.donorPhone,
+        amount: data.amount,
+        campaign: data.campaignId,
+        notes: data.notes || "",
+        isAnonymous: data.isAnonymous || false,
+        currency: "SDG",
+        paymentMethod: "manual_entry",
+        status: data.status, // Use the selected status
+        recurringDonation: data.donationType === "recurring",
+        recurringInterval:
+          data.donationType === "recurring" ? data.recurringInterval : null,
+        createdAt: serverTimestamp(),
+        createdBy: user?.uid || "admin_manual_entry",
+      };
+
+      // If parent provided onSubmit, use it
+      if (onSubmit) {
+        await onSubmit(donationData);
+      } else {
+        // Fallback to internal submission
+        await addDoc(collection(db, "donations"), donationData);
+        // Update the campaign's raised/currentAmount field
+        const campaignRef = doc(db, "campaigns", data.campaignId);
+        // Try to increment 'raised', fallback to 'currentAmount' if 'raised' does not exist
+        try {
+          await updateDoc(campaignRef, {
+            raised: increment(Number(data.amount)),
+          });
+        } catch (e) {
+          await updateDoc(campaignRef, {
+            currentAmount: increment(Number(data.amount)),
+          });
+        }
+      }
+      
+      toast.success("تمت إضافة التبرع بنجاح!", { id: toastId });
+      reset();
+    } catch (err) {
+      console.error("Donation submission error:", err);
+      toast.error("حدث خطأ أثناء إضافة التبرع.", { id: toastId });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-[var(--background-color)] p-4 sm:p-8" dir="rtl">
+      <form
+        onSubmit={handleSubmit(handleFormSubmit)}
+        className="bg-[var(--background-color)] p-6 rounded-lg shadow-md max-w-2xl mx-auto space-y-6"
+        noValidate
+      >
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-[var(--text-color)]">
+            إضافة تبرع جديد
+          </h2>
+          <p className="text-[var(--text-color-secondary)] mt-1">
+            أدخل تفاصيل التبرع لإضافته إلى النظام.
+          </p>
+        </div>
+        {/* Donation Type */}
+        <div>
+          <label className="block text-sm font-medium text-[var(--text-color)] mb-2">
+            نوع التبرع
+          </label>
+          <div className="flex rounded-full p-1 border border-[var(--border-color)] bg-[var(--background-color)]">
+            <label
+              className={`w-1/2 text-center cursor-pointer px-4 py-2 text-sm font-semibold rounded-full transition-colors focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2
+                ${
+                  donationType === "one-time"
+                    ? "bg-accent text-[var(--text-color)] shadow"
+                    : "bg-[var(--background-color)] text-[var(--text-color)] border border-transparent hover:bg-[var(--background-color)]"
+                }
+              `}
+              tabIndex={0}
+            >
+              <input
+                type="radio"
+                value="one-time"
+                {...register("donationType")}
+                className="sr-only"
+              />
+              مرة واحدة
+            </label>
+            <label
+              className={`w-1/2 text-center cursor-pointer px-4 py-2 text-sm font-semibold rounded-full transition-colors focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2
+                ${
+                  donationType === "recurring"
+                    ? "bg-accent text-[var(--text-color)] shadow"
+                    : "bg-[var(--background-color)] text-[var(--text-color)] border border-transparent hover:bg-[var(--background-color)]"
+                }
+              `}
+              tabIndex={0}
+            >
+              <input
+                type="radio"
+                value="recurring"
+                {...register("donationType")}
+                className="sr-only"
+              />
+              متكرر
+            </label>
+          </div>
+        </div>
+        {/* Recurring Interval (Conditional) */}
+        {donationType === "recurring" && (
+          <div>
+            <label
+              htmlFor="recurringInterval"
+              className="block text-sm font-medium text-[var(--text-color)] mb-1"
+            >
+              فترة التكرار
+            </label>
+            <select
+              id="recurringInterval"
+              {...register("recurringInterval")}
+              className="input-field bg-[var(--background-color)] text-[var(--text-color)]"
+            >
+              <option value="">اختر الفترة...</option>
+              <option value="monthly">شهرياً</option>
+              <option value="yearly">سنوياً</option>
+            </select>
+            {errors.recurringInterval && (
+              <p className="error-message">
+                {errors.recurringInterval.message}
+              </p>
+            )}
+          </div>
+        )}
+        {/* Form Fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Donor Name */}
+          <div>
+            <label
+              htmlFor="donorName"
+              className="block text-sm font-medium text-[var(--text-color)] mb-1"
+            >
+              اسم المتبرع
+            </label>
+            <input
+              id="donorName"
+              type="text"
+              {...register("donorName")}
+              className="input-field bg-[var(--background-color)] text-[var(--text-color)]"
+            />
+            {errors.donorName && (
+              <p className="error-message">{errors.donorName.message}</p>
+            )}
+          </div>
+          {/* Donor Phone */}
+          <div>
+            <label
+              htmlFor="donorPhone"
+              className="block text-sm font-medium text-[var(--text-color)] mb-1"
+            >
+              رقم هاتف المتبرع
+            </label>
+            <input
+              id="donorPhone"
+              type="tel"
+              {...register("donorPhone")}
+              className="input-field bg-[var(--background-color)] text-[var(--text-color)]"
+              pattern="[0-9]{8,15}"
+              inputMode="tel"
+            />
+            {errors.donorPhone && (
+              <p className="error-message">{errors.donorPhone.message}</p>
+            )}
+          </div>
+          {/* Amount */}
+          <div>
+            <label
+              htmlFor="amount"
+              className="block text-sm font-medium text-[var(--text-color)] mb-1"
+            >
+              المبلغ (بالجنيه السوداني)
+            </label>
+            <input
+              id="amount"
+              type="number"
+              step="0.01"
+              {...register("amount")}
+              className="input-field bg-[var(--background-color)] text-[var(--text-color)]"
+            />
+            {errors.amount && (
+              <p className="error-message">{errors.amount.message}</p>
+            )}
+          </div>
+          {/* Campaign */}
+          <div>
+            <label
+              htmlFor="campaignId"
+              className="block text-sm  font-medium text-[var(--text-color)] mb-1"
+            >
+              الحملة المستهدفة
+            </label>
+            <div className="relative">
+              <select
+                id="campaignId"
+                {...register("campaignId")}
+                className="input-field text-center block w-full px-4 py-2 pr-10 rounded-lg border border-primary-green focus:border-primary-green focus:ring focus:ring-primary-green/30 focus:ring-opacity-50 bg-[var(--background-color)] dark:bg-[var(--background-color)] text-[var(--text-color)] appearance-none transition font-semibold shadow-sm"
+              >
+                <option
+                  value=""
+                  className="text-gray-400 bg-[var(--background-color)] dark:bg-[var(--background-color)]"
+                >
+                  اختر حملة...
+                </option>
+                {campaigns.map((c) => (
+                  <option
+                    key={c.id}
+                    value={c.id}
+                    className="text-[var(--text-color)] bg-[var(--background-color)] font-semibold"
+                  >
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {/* Custom dropdown arrow */}
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center px-2 text-primary-green">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </div>
+            {errors.campaignId && (
+              <p className="error-message">{errors.campaignId.message}</p>
+            )}
+          </div>
+          {/* Status */}
+          <div>
+            <label
+              htmlFor="status"
+              className="block text-sm font-medium text-[var(--text-color)] mb-1"
+            >
+              حالة التبرع
+            </label>
+            <select
+              id="status"
+              {...register("status")}
+              className="input-field bg-[var(--background-color)] text-[var(--text-color)]"
+            >
+              <option value="pending">قيد الانتظار</option>
+              <option value="completed">تم الإنجاز</option>
+              <option value="failed">فشل التبرع</option>
+            </select>
+            {errors.status && (
+              <p className="error-message">{errors.status.message}</p>
+            )}
+          </div>
+        </div>
+        {/* Notes */}
+        <div>
+          <label
+            htmlFor="notes"
+            className="block text-sm font-medium text-[var(--text-color)] mb-1"
+          >
+            ملاحظات (اختياري)
+          </label>
+          <textarea
+            id="notes"
+            {...register("notes")}
+            rows={3}
+            className="input-field bg-[var(--background-color)] text-[var(--text-color)]"
+          ></textarea>
+        </div>
+        {/* Anonymous Checkbox */}
+        <div className="flex items-center">
+          <input
+            id="isAnonymous"
+            type="checkbox"
+            {...register("isAnonymous")}
+            className="h-4 w-4 rounded border-primary-green text-primary-green focus:ring-primary-green ml-3"
+          />
+          <label
+            htmlFor="isAnonymous"
+            className="text-sm text-[var(--text-color)]"
+          >
+            تسجيل التبرع كـ "فاعل خير"
+          </label>
+        </div>
+        {/* Submit & Cancel Buttons */}
+        <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full sm:w-auto bg-[#3cc400] text-white font-bold py-3 px-4 rounded-lg hover:bg-[#216c00] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2563eb] transition-colors disabled:bg-neutral-medium disabled:cursor-not-allowed"
+          >
+            {isLoading ? "جاري الإضافة..." : "إضافة التبرع"}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="w-full sm:w-auto bg-[#ef4444] text-white font-bold py-3 px-4 rounded-lg hover:bg-[#b91c1c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ef4444] transition-colors"
+          >
+            إلغاء
+          </button>
+        </div>
+      </form>
+      {/* Basic CSS classes for reuse - can be moved to index.css */}
+      <style>{`
+        .input-field {
+          display: block;
+          width: 100%;
+          padding: 0.75rem;
+          border-radius: 0.5rem;
+          border: 1px solid #BDC3C7;
+          transition: border-color 0.2s;
+        }
+        .input-field:focus {
+          outline: none;
+          border-color: #4A90E2;
+          box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+        .error-message {
+          color: #CE1126;
+          font-size: 0.875rem;
+          margin-top: 0.25rem;
+        }
+      `}</style>
+    </div>
+  );
+}

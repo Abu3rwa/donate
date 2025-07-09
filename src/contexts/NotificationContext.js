@@ -201,10 +201,8 @@ export const NotificationProvider = ({ children }) => {
 
   // Network error notification
   const showNetworkError = () => {
-    return showError("حدث خطأ في الاتصال بالشبكة. يرجى المحاولة مرة أخرى.", {
-      title: "خطأ في الشبكة",
-      retry: true,
-    });
+    // Disabled: do nothing
+    return null;
   };
 
   // Authentication error notification

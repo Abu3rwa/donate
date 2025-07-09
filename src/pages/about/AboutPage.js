@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 
 // Import team image
-import teamImage from "../assets/488256335_9483793145034770_3893820036335481734_n.jpg";
+import teamImage from "../../assets/488256335_9483793145034770_3893820036335481734_n.jpg";
 
 const AboutPage = () => {
 

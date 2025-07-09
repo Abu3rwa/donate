@@ -1,312 +1,141 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { useLanguage } from "../../contexts/LanguageContext";
+import { Typography, useTheme } from '@mui/material';
+import logo from '../../assets/tempLogo.png';
+// Using <a> tags for standalone demo instead of <Link> from react-router-dom
+// import { Link } from "react-router-dom";
 
-import {
-  APP_CONFIG,
-  SOCIAL_MEDIA,
-  CONTACT_INFO,
-} from "../../constants";
+// --- SVG ICONS ---
+// Self-contained SVG components for icons to avoid external dependencies.
+const MailIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="20" height="16" x="2" y="4" rx="2" />
+        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </svg>
+);
+
+const PhoneIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+);
+
+const MapPinIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+        <circle cx="12" cy="10" r="3" />
+    </svg>
+);
+
+const FacebookIcon = (props) => (
+    <svg {...props} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
+    </svg>
+);
+
+const TwitterIcon = (props) => (
+    <svg {...props} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.71v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
+    </svg>
+);
+
+
+// --- REUSABLE FOOTER SUB-COMPONENTS ---
+
+const FooterSection = ({ title, children }) => (
+    <div>
+        <h3 className="text-sm font-semibold text-gray-400 tracking-wider uppercase">{title}</h3>
+        <div className="mt-4 space-y-4">
+            {children}
+        </div>
+    </div>
+);
+
+const FooterLink = ({ href, children }) => (
+    <a href={href} className="text-base text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors duration-200">
+        {children}
+    </a>
+);
+
+const ContactInfo = ({ icon, children }) => (
+    <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 w-6 h-6 text-gray-400">{icon}</div>
+        <div className="text-base text-gray-500 dark:text-gray-300">{children}</div>
+    </div>
+);
+
+const SocialLink = ({ href, icon, label }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-500 dark:hover:text-white">
+        <span className="sr-only">{label}</span>
+        {icon}
+    </a>
+);
+
+// --- MAIN FOOTER COMPONENT ---
 
 const Footer = () => {
-  const { isArabic } = useLanguage();
-
   const currentYear = new Date().getFullYear();
-
-  const footerLinks = [
-    {
-      title: "عن المنظمة",
-      links: [
-        { name: "من نحن", href: "/about" },
-        { name: "مهمتنا", href: "/about#mission" },
-        { name: "فريق العمل", href: "/about#team" },
-        {
-          name: "الشهادات",
-          href: "/about#certificates",
-        },
-      ],
-    },
-    {
-      title: "عملنا",
-      links: [
-        {
-          name: "الإغاثة الطارئة",
-          href: "/campaigns?category=emergency",
-        },
-        {
-          name: "التعليم",
-          href: "/campaigns?category=education",
-        },
-        {
-          name: "الرعاية الصحية",
-          href: "/campaigns?category=healthcare",
-        },
-        {
-          name: "المياه النظيفة",
-          href: "/campaigns?category=water",
-        },
-      ],
-    },
-    {
-      title: "المساعدة",
-      links: [
-        { name: "تبرع الآن", href: "/donate" },
-        { name: "تطوع معنا", href: "/volunteer" },
-        {
-          name: "كن شريكاً",
-          href: "/contact",
-        },
-        {
-          name: "انشر الكلمة",
-          href: "/stories",
-        },
-      ],
-    },
-    {
-      title: "الشفافية",
-      links: [
-        {
-          name: "التقارير المالية",
-          href: "/transparency#financial",
-        },
-        { name: "تأثيرنا", href: "/impact" },
-        {
-          name: "المراجعة",
-          href: "/transparency#audit",
-        },
-        {
-          name: "الشفافية",
-          href: "/transparency",
-        },
-      ],
-    },
-  ];
+    const theme = useTheme();
 
   return (
-    <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-          {/* Organization Info */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center space-x-3 rtl:space-x-reverse mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">ص</span>
+        <footer className="bg-white dark:bg-gray-900" aria-labelledby="footer-heading">
+            <h2 id="footer-heading" className="sr-only">Footer</h2>
+            <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8">
+                <div className="pb-8 xl:grid xl:grid-cols-3 xl:gap-8">
+                    {/* About Section */}
+                    <div className="space-y-8 xl:col-span-1">
+                        <div className="flex items-center">
+                            <img
+                              src={logo}
+                              alt="شعار الجمعية"
+                              className="w-12 h-12 rounded-lg object-cover object-center mr-3"
+                            />
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
+                              جمعية السعاتة الدومة الخيرية
+                            </Typography>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-neutral-900 dark:text-white">
-                  {APP_CONFIG.name}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {APP_CONFIG.description}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-              نحن منظمة خيرية مكرسة لمساعدة أهالي منطقة السعاتة الدومة في الخرطوم،
-              السودان. نعمل على توفير الإغاثة الطارئة والتعليم والرعاية الصحية
-              والمياه النظيفة للمحتاجين.
-            </p>
-
-            {/* Contact Info */}
-            <div className="space-y-2">
-              <div className="flex items-center space-x-3 rtl:space-x-reverse text-sm text-gray-600 dark:text-gray-400">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                  />
-                </svg>
-                <span dir="ltr">{CONTACT_INFO.phone}</span>
-              </div>
-              <div className="flex items-center space-x-3 rtl:space-x-reverse text-sm text-gray-600 dark:text-gray-400">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-                <span>{CONTACT_INFO.email}</span>
-              </div>
-              <div className="flex items-center space-x-3 rtl:space-x-reverse text-sm text-gray-600 dark:text-gray-400">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                <span>{CONTACT_INFO.address}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer Links */}
-          {footerLinks.map((section) => (
-            <div key={section.title}>
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
-                {section.title}
-              </h4>
-              <ul className="space-y-3">
-                {section.links.map((link) => (
-                  <li key={link.name}>
-                    <Link
-                      to={link.href}
-                      className="text-sm text-gray-600 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400 transition-colors duration-200"
-                    >
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+                        <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                          نحن منظمة خيرية غير ربحية مكرسة لتقديم الدعم والإغاثة لأهالي منطقة السعاتة الدومة من خلال مشاريع مستدامة ومبادرات مجتمعية.
+                        </Typography>
+                        
         </div>
 
-        {/* Bottom Section */}
-        <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            {/* Copyright */}
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              <p>
-                © {currentYear} {APP_CONFIG.name}.{" "}
-                جميع الحقوق محفوظة.
-              </p>
-            </div>
-
-            {/* Social Media */}
-            <div className="flex items-center space-x-4 rtl:space-x-reverse">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                تابعنا على:
-              </span>
-              <div className="flex space-x-3 rtl:space-x-reverse">
-                <a
-                  href={SOCIAL_MEDIA.facebook}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400 transition-colors duration-200"
-                  aria-label="Facebook"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                  </svg>
-                </a>
-                <a
-                  href={SOCIAL_MEDIA.twitter}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400 transition-colors duration-200"
-                  aria-label="Twitter"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
-                  </svg>
-                </a>
-                <a
-                  href={SOCIAL_MEDIA.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400 transition-colors duration-200"
-                  aria-label="Instagram"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987 6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.637.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.297C4.198 14.895 3.708 13.744 3.708 12.447s.49-2.448 1.418-3.323c.875-.807 2.026-1.297 3.323-1.297s2.448.49 3.323 1.297c.928.875 1.418 2.026 1.418 3.323s-.49 2.448-1.418 3.244c-.875.807-2.026 1.297-3.323 1.297zm7.83-9.781c-.49 0-.928-.175-1.297-.49-.368-.315-.49-.753-.49-1.243 0-.49.122-.928.49-1.243.369-.315.807-.49 1.297-.49s.928.175 1.297.49c.368.315.49.753.49 1.243 0 .49-.122.928-.49 1.243-.369.315-.807.49-1.297.49z" />
-                  </svg>
-                </a>
-                <a
-                  href={SOCIAL_MEDIA.youtube}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400 transition-colors duration-200"
-                  aria-label="YouTube"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                  </svg>
-                </a>
+                    {/* Links & Contact Grid */}
+                    <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-8 xl:mt-0 xl:col-span-2">
+                       
+                        <div className="md:grid md:grid-cols-1 md:gap-8">
+                           <div>
+                                <FooterSection title="تواصل معنا">
+                                    <ContactInfo icon={<MapPinIcon />}>
+                                        <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                                          السعاتة الدومة،<br/>
+                                          غرب كردفان، السودان
+                                        </Typography>
+                                    </ContactInfo>
+                                    <ContactInfo icon={<PhoneIcon />}>
+                                        <a href="tel:+249123456789" className="hover:text-gray-900 dark:hover:text-white">
+                                          <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                                            +249 123 456 789
+                                          </Typography>
+                                        </a>
+                                    </ContactInfo>
+                                    <ContactInfo icon={<MailIcon />}>
+                                        <a href="mailto:info@saata.org" className="hover:text-gray-900 dark:hover:text-white">
+                                          <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                                            info@saata.org
+                                          </Typography>
+                                        </a>
+                                    </ContactInfo>
+                                </FooterSection>
+                           </div>
               </div>
             </div>
           </div>
 
-          {/* Additional Links */}
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <div className="flex flex-wrap justify-center md:justify-start space-x-6 rtl:space-x-reverse text-sm text-gray-600 dark:text-gray-400">
-                <Link
-                  to="/privacy"
-                  className="hover:text-primary-500 transition-colors duration-200"
-                >
-                  {isArabic() ? "سياسة الخصوصية" : "Privacy Policy"}
-                </Link>
-                <Link
-                  to="/terms"
-                  className="hover:text-primary-500 transition-colors duration-200"
-                >
-                  {isArabic() ? "شروط الاستخدام" : "Terms of Service"}
-                </Link>
-                <Link
-                  to="/cookies"
-                  className="hover:text-primary-500 transition-colors duration-200"
-                >
-                  {isArabic() ? "ملفات تعريف الارتباط" : "Cookies Policy"}
-                </Link>
-                <Link
-                  to="/accessibility"
-                  className="hover:text-primary-500 transition-colors duration-200"
-                >
-                  {isArabic() ? "إمكانية الوصول" : "Accessibility"}
-                </Link>
-              </div>
-
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {isArabic()
-                  ? "مطور بواسطة فريق السعاتة الدومة"
-                  : "Developed by Assaatah Al-Doma Team"}
-              </div>
-            </div>
-          </div>
+                {/* Copyright Bar */}
+                <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8 text-center">
+                    <Typography variant="body2" sx={{ color: theme.palette.text.disabled }}>
+                      &copy; {currentYear} جمعية السعاتة الدومة الخيرية. جميع الحقوق محفوظة.
+                    </Typography>
         </div>
       </div>
     </footer>

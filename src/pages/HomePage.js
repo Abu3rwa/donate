@@ -1,399 +1,189 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import heroImage from '../assets/488256335_9483793145034770_3893820036335481734_n.jpg';
+import { Typography, useTheme, Button } from '@mui/material';
 
-import { useHomePageData } from "../hooks/useHomePageData";
-import HeroSection from "../components/HeroSection/HeroSection";
-import AnimatedCounter from "../components/AnimatedCounter/AnimatedCounter";
-import { CATEGORIES } from "../constants";
-
-// Import images
-
-import { auth } from "../config/firebase";
-import { testimonials, partners, statistics, featuredStories } from "../data/homePageData";
-
-console.log("Current Firebase user:", auth.currentUser);
-const HomePage = () => {
-  const { emergencyAlert, featuredStories, testimonials, partners, statistics } = useHomePageData();
-
-  
-
-  
-
+const HeroSection = () => {
+  const theme = useTheme();
   return (
     <div
-      className="min-h-screen bg-[var(--background-color)] text-[var(--text-primary)]"
+      className="relative text-center flex flex-col items-center justify-center min-h-screen h-screen w-full px-4 -mt-14"
+      style={{
+        backgroundImage: `linear-gradient(120deg, rgba(13,5,5,0.7) 0%, rgba(0,0,0,0.5) 100%), url(${heroImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
     >
-      {/* Hero Section */}
-      <HeroSection />
-
-      {/* Emergency Alert Banner */}
-      {emergencyAlert && (
-        <div
-          className="bg-[var(--accent-color)] text-[var(--text-primary)] p-4 md:p-6"
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-700/40 to-secondary-700/30 animate-pulse-slow z-0" />
+      <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center justify-center">
+        <Typography variant="h1" sx={{ mb: 3, fontWeight: 800, color: theme.palette.common.white, textShadow: '0 4px 24px rgba(0,0,0,0.55), 0 1.5px 0 #000' }}>
+          معاً نصنع الفرق
+        </Typography>
+        <Typography variant="h5" sx={{ mb: 5, color: theme.palette.common.white, fontWeight: 500, textShadow: '0 2px 12px rgba(0,0,0,0.45), 0 1px 0 #000' }}>
+          نعمل يداً بيد لتقديم الدعم والإغاثة للأسر المتضررة في السعاتة الدومة. تبرعك يصنع أملاً جديداً.
+        </Typography>
+        <Button
+          component={Link}
+          to="/donate"
+          color="primary"
+          variant="contained"
+          size="large"
+          sx={{
+            fontWeight: 700,
+            fontSize: { xs: '1rem', md: '1.25rem' },
+            px: 5,
+            py: 2.5,
+            borderRadius: 999,
+            boxShadow: 3,
+            mt: 2,
+            textShadow: '0 1px 4px rgba(0,0,0,0.18)',
+          }}
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center space-x-3 rtl:space-x-reverse">
-              <svg
-                className="w-6 h-6 animate-pulse"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                />
-              </svg>
-              <span className="font-semibold">{emergencyAlert.message}</span>
-            </div>
-            <Link
-              to="/donate"
-              className="bg-[var(--paper-color)] text-[var(--accent-color)] px-4 py-2 rounded-lg font-semibold"
-            >
-              تبرع الآن
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* Impact Statistics Section */}
-      <section
-        className="py-16 relative overflow-hidden bg-[var(--background-color)]"
+          تبرع الآن
+        </Button>
+      </div>
+      {/* Animated Scroll Down Hand Icon */}
+      <div
+        className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center cursor-pointer hover:opacity-100 opacity-90 transition"
+        onClick={() => window.scrollBy({ top: window.innerHeight, behavior: 'smooth' })}
+        tabIndex={0}
+        role="button"
+        aria-label="مرر للأسفل"
       >
-        {/* Subtle pattern overlay */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-30 bg-pattern-light"
-        ></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2
-              className="text-3xl md:text-4xl font-bold mb-4 text-[var(--text-primary)]"
-            >
-              تأثيرنا على أرض الواقع
-            </h2>
-            <p
-              className="text-xl max-w-3xl mx-auto text-[var(--text-secondary)]"
-            >
-              من خلال تبرعاتكم الكريمة، استطعنا مساعدة آلاف الأسر في منطقة
-              السعاتة الدومة
-            </p>
-          </div>
+        <span className="sr-only">مرر للأسفل</span>
+        <svg
+          className="w-10 h-10 text-white animate-bounce drop-shadow-lg"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path d="M12.75 2.75a.75.75 0 00-1.5 0v8.19l-1.72-1.72a.75.75 0 10-1.06 1.06l3 3a.75.75 0 001.06 0l3-3a.75.75 0 10-1.06-1.06l-1.72 1.72V2.75z" />
+          <path d="M4.75 15.25a.75.75 0 01.75-.75h13a.75.75 0 010 1.5h-13a.75.75 0 01-.75-.75z" />
+        </svg>
+      </div>
+    </div>
+  );
+};
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+const EmergencyAlertBanner = ({ alert }) => {
+  const [visible, setVisible] = useState(true);
+  if (!alert || !visible) return null;
+  return (
+    <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-[95vw] max-w-xl animate-fadeIn">
+      <div className="bg-red-600/95 text-white rounded-2xl shadow-xl flex items-center justify-between px-6 py-4 gap-4 relative">
+        <div className="flex items-center gap-3">
+          <svg className="w-7 h-7 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <Typography variant="body1" sx={{ fontWeight: 600, fontSize: { xs: '1rem', md: '1.15rem' } }}>
+            {alert.message}
+          </Typography>
+        </div>
+        <button
+          onClick={() => setVisible(false)}
+          className="ml-2 text-white/80 hover:text-white focus:outline-none"
+          aria-label="إغلاق التنبيه"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const stats = [
+  { label: "إجمالي التبرعات (SDG)", value: 7500000, icon: (
+    <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" /></svg>
+  ) },
+  { label: "أسرة مستفيدة", value: 1200, icon: (
+    <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4a4 4 0 11-8 0 4 4 0 018 0zm6 6v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a6 6 0 0112 0z" /></svg>
+  ) },
+  { label: "مشاريع نشطة", value: 5, icon: (
+    <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+  ) },
+  { label: "متطوع", value: 85, icon: (
+    <svg className="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+  ) },
+];
+
+const AnimatedNumber = ({ value }) => {
+  const [display, setDisplay] = React.useState(0);
+  React.useEffect(() => {
+    let start = 0;
+    const duration = 1200;
+    const frameRate = 1000 / 60;
+    const totalFrames = Math.round(duration / frameRate);
+    const increment = value / totalFrames;
+    const counter = setInterval(() => {
+      start += increment;
+      if (start >= value) {
+        setDisplay(value);
+        clearInterval(counter);
+      } else {
+        setDisplay(Math.ceil(start));
+      }
+    }, frameRate);
+    return () => clearInterval(counter);
+  }, [value]);
+  return <span>{display.toLocaleString('ar-EG')}</span>;
+};
+
+const ImpactStatisticsSection = () => {
+  const theme = useTheme();
+    return (
+    <section className="py-16 bg-gray-50 dark:bg-gray-800">
+      <div className="max-w-5xl mx-auto px-4">
+        <Typography variant="h2" align="center" sx={{ fontWeight: 700, mb: 5, color: theme.palette.primary.main }}>
+          تأثيرنا
+        </Typography>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+          {stats.map((stat) => (
             <div
-              className="text-center stat-card-secondary bg-[var(--secondary-color)] text-white rounded-2xl"
+              key={stat.label}
+              className="bg-white dark:bg-gray-700 rounded-2xl shadow-lg p-8 flex flex-col items-center hover:scale-105 transition-transform duration-200 group"
             >
-              <div className="mb-4">
-                <AnimatedCounter
-                  end={statistics.totalDonations}
-                  suffix=" SDG"
-                />
-              </div>
-              <h3
-                className="text-lg font-semibold mb-2 text-white"
-              >
-                إجمالي التبرعات
-              </h3>
-              <p className="text-[var(--text-secondary)] opacity-90">
-                تم جمعها منذ بداية المشروع
-              </p>
+              <div className="mb-3 group-hover:scale-110 transition-transform duration-200">{stat.icon}</div>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: theme.palette.text.primary, mb: 1 }}>
+                <AnimatedNumber value={stat.value} />
+              </Typography>
+              <Typography variant="body2" sx={{ color: theme.palette.text.secondary, fontWeight: 500 }}>
+                {stat.label}
+              </Typography>
             </div>
-
-            <div
-              className="text-center stat-card bg-[var(--primary-color)] text-white rounded-2xl"
-            >
-              <div className="mb-4">
-                <AnimatedCounter end={statistics.familiesHelped} />
-              </div>
-              <h3
-                className="text-lg font-semibold mb-2 text-white"
-              >
-                الأسر المساعدة
-              </h3>
-              <p className="text-[var(--text-secondary)] opacity-90">
-                أسر استفادت من برامجنا
-              </p>
+          ))}
             </div>
-
-            <div
-              className="text-center stat-card-secondary bg-[var(--secondary-color)] text-white rounded-2xl"
-            >
-              <div className="mb-4 ">
-                <AnimatedCounter end={statistics.activeProjects} />
-              </div>
-              <h3
-                className="text-lg font-semibold mb-2 text-white"
-              >
-                المشاريع النشطة
-              </h3>
-              <p className="text-[var(--text-secondary)] opacity-90">
-                مشاريع قيد التنفيذ حالياً
-              </p>
-            </div>
-
-            <div
-              className="text-center stat-card bg-[var(--primary-color)] text-white rounded-2xl"
-            >
-              <div className="mb-4">
-                <AnimatedCounter end={statistics.volunteers} />
-              </div>
-              <h3
-                className="text-lg font-semibold mb-2 text-white"
-              >
-                المتطوعين
-              </h3>
-              <p className="text-[var(--text-secondary)] opacity-90">
-                متطوع يساعدون في الميدان
-              </p>
-            </div>
-          </div>
         </div>
-        <div className="relative z-10"></div>
-      </section>
+    </section>
+);
+};
 
-      {/* How We Help Section */}
-      <section className="py-16 bg-[var(--paper-color)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2
-              className="text-3xl md:text-4xl font-bold mb-4 text-[var(--text-primary)]"
-            >
-              كيف نساعد
-            </h2>
-            <p
-              className="text-xl max-w-3xl mx-auto text-[var(--text-secondary)]"
-            >
-              نركز على أربعة مجالات رئيسية لمساعدة أهالي السعاتة الدومة
-            </p>
-          </div>
+const FacebookLink = () => (
+  <div className="flex justify-center mt-10">
+    <a
+      href="https://www.facebook.com/groups/396995197043591/media"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 px-5 py-3 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-full font-semibold shadow-lg hover:scale-105 transition-transform duration-200 text-lg"
+      aria-label="صفحة الفيسبوك"
+    >
+      <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M22.675 0h-21.35C.595 0 0 .592 0 1.326v21.348C0 23.408.595 24 1.325 24h11.495v-9.294H9.692v-3.622h3.128V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.797.143v3.24l-1.918.001c-1.504 0-1.797.715-1.797 1.763v2.313h3.587l-.467 3.622h-3.12V24h6.116C23.406 24 24 23.408 24 22.674V1.326C24 .592 23.406 0 22.675 0" />
+      </svg>
+      تابعنا على فيسبوك
+                                </a>
+                            </div>
+);
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {Object.entries(CATEGORIES).map(([key, category]) => (
-              <div
-                key={key}
-                style={{
-                  background: "var(--background-color)",
-                  color: "var(--text-primary)",
-                  borderRadius: "1rem",
-                  boxShadow: "0 10px 15px -3px rgba(0,0,0,0.07)",
-                }}
-                className="p-6 hover:shadow-xl transition-shadow duration-300 bg-[var(--background-color)] text-[var(--text-primary)] rounded-2xl shadow-md"
-              >
-                <div
-                  className="w-16 h-16 rounded-lg flex items-center justify-center mb-4 bg-[var(--accent-color)]"
-                >
-                  <span className="text-2xl">{category.icon}</span>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">{category.name}</h3>
-                <p className="mb-4" style={{ color: "var(--text-secondary)" }}>
-                  {category.description}
-                </p>
-                <Link
-                  to={`/campaigns?category=${key}`}
-                  className="text-[var(--primary-color)] font-semibold"
-                >
-                  تعرف على المزيد →
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Stories Section */}
-      <section className="py-16 bg-[var(--paper-color)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-12">
-            <div>
-              <h2
-                className="text-3xl md:text-4xl font-bold mb-4 text-[var(--text-primary)]"
-              >
-                القصص المؤثرة
-              </h2>
-              <p className="text-xl text-[var(--text-secondary)]">
-                قصص حقيقية عن التغيير الإيجابي في حياة الناس
-              </p>
-            </div>
-            <Link to="/stories" className="btn-primary px-6 py-3">
-              عرض جميع القصص
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {featuredStories.map((story) => (
-              <div
-                key={story.id}
-                className="overflow-hidden hover:shadow-xl transition-shadow duration-300 bg-[var(--background-color)] text-[var(--text-primary)] rounded-2xl shadow-md"
-              >
-                <div className="relative h-48">
-                  <img
-                    src={story.image}
-                    alt={story.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-3 right-3">
-                    <span
-                      className="bg-[var(--primary-color)] text-white px-3 py-1 rounded-2xl text-sm font-semibold"
-                    >
-                      {CATEGORIES[story.category]?.name}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <h3
-                    className="text-lg font-semibold mb-2 line-clamp-2 text-[var(--text-primary)]"
-                  >
-                    {story.title}
-                  </h3>
-                  <p
-                    className="mb-4 line-clamp-3 text-[var(--text-secondary)]"
-                  >
-                    {story.excerpt}
-                  </p>
-                  <div
-                    className="flex items-center justify-between text-sm mb-4 text-[var(--text-secondary)]"
-                  >
-                    <span>{story.publishedAt.toLocaleDateString()}</span>
-                    <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                      <span>👁️ {story.viewCount}</span>
-                      <span>❤️ {story.likes}</span>
-                    </div>
-                  </div>
-                  <Link
-                    to={`/stories/${story.id}`}
-                    className="text-[var(--primary-color)] font-semibold"
-                  >
-                    اقرأ القصة كاملة →
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section
-        className="py-16 bg-[var(--background-color)]"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2
-              className="text-3xl md:text-4xl font-bold mb-4 text-[var(--text-primary)]"
-            >
-              ماذا يقول الناس
-            </h2>
-            <p className="text-xl text-[var(--text-secondary)]">
-              آراء المتبرعين والمتطوعين والمستفيدين
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial) => (
-              <div
-                key={testimonial.id}
-                className="p-6 shadow-lg bg-[var(--paper-color)] text-[var(--text-primary)] rounded-2xl shadow-md"
-              >
-                <div className="flex items-center mb-4">
-                  <img
-                    src={testimonial.avatar}
-                    alt={testimonial.name}
-                    className="w-12 h-12 rounded-full mr-4 rtl:ml-4 object-cover"
-                  />
-                  <div>
-                    <h4
-                      className="font-semibold text-[var(--text-primary)]"
-                    >
-                      {testimonial.name}
-                    </h4>
-                    <p
-                      className="text-sm text-[var(--text-secondary)]"
-                    >
-                      {testimonial.role}
-                    </p>
-                  </div>
-                </div>
-                <p
-                  className="italic text-[var(--text-secondary)]"
-                >
-                  "{testimonial.content}"
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Partners Section */}
-      <section className="py-16 bg-[var(--paper-color)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2
-              className="text-3xl md:text-4xl font-bold mb-4 text-[var(--text-primary)]"
-            >
-              شركاؤنا
-            </h2>
-            <p className="text-xl text-[var(--text-secondary)]">
-              نعمل مع منظمات موثوقة لتحقيق أقصى تأثير
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {partners.map((partner) => (
-              <a
-                key={partner.id}
-                href={partner.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:shadow-lg transition-colors duration-200 bg-[var(--background-color)] rounded-2xl flex items-center justify-center p-6"
-              >
-                <img
-                  src={partner.logo}
-                  alt={partner.name}
-                  className="h-12 opacity-60 hover:opacity-100 transition-opacity duration-200"
-                />
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Newsletter Signup Section */}
-      <section
-        className="py-16 bg-gradient-to-br from-[var(--secondary-color)] to-[var(--secondary-dark)]"
-      >
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2
-            className="text-3xl md:text-4xl font-bold mb-4 text-white"
-          >
-            ابق على اطلاع
-          </h2>
-          <p className="text-xl mb-8 text-white">
-            اشترك في نشرتنا الإخبارية لتصلك آخر الأخبار والتحديثات
-          </p>
-
-          <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="البريد الإلكتروني"
-              className="flex-1 px-4 py-3 rounded-lg border-0 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary-600"
-              required
-            />
-            <button
-              type="submit"
-              className="bg-white text-[var(--secondary-color)] px-6 py-3 rounded-lg font-semibold"
-            >
-              اشتراك
-            </button>
-          </form>
-
-          <p className="text-sm mt-4 text-white">
-            نحترم خصوصيتك. لن نشارك بريدك الإلكتروني مع أي طرف ثالث.
-          </p>
-        </div>
-      </section>
+const HomePage = () => {
+  const emergencyAlert = { message: "نداء عاجل: حاجة ماسة للمساعدات في منطقة السعاتة الدومة." };
+  return (
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 relative">
+      <EmergencyAlertBanner alert={emergencyAlert} />
+      <HeroSection />
+      <ImpactStatisticsSection />
+      <FacebookLink />
     </div>
   );
 };

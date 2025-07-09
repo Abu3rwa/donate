@@ -139,11 +139,14 @@ export const AuthProvider = ({ children }) => {
                 );
                 if (userDoc.exists()) {
                   const userData = userDoc.data();
-                  setUser({
+                  const mergedUser = {
                     ...firebaseUser,
                     ...userData,
-                  });
+                  };
+                  console.log('AuthContext merged user:', mergedUser);
+                  setUser(mergedUser);
                 } else {
+                  console.log('AuthContext firebaseUser (no Firestore doc):', firebaseUser);
                   setUser(firebaseUser);
                 }
               } catch (error) {

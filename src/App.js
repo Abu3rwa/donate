@@ -1,5 +1,10 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { HelmetProvider } from "react-helmet-async";
@@ -15,10 +20,10 @@ import Footer from "./components/Footer/Footer";
 
 // Import pages
 import HomePage from "./pages/HomePage";
-import AboutPage from "./pages/AboutPage";
+import AboutPage from "./pages/about/AboutPage";
 import CampaignsPage from "./pages/CampaignsPage";
 import StoriesPage from "./pages/StoriesPage";
-import DonationPage from "./pages/DonationPage";
+  import DonationsPage from "./pages/DonationsPage";
 import VolunteerPage from "./pages/VolunteerPage";
 import ImpactPage from "./pages/ImpactPage";
 import ContactPage from "./pages/ContactPage";
@@ -29,13 +34,16 @@ import RegisterPage from "./pages/RegisterPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import AdminFixPage from "./pages/AdminFixPage";
 import DebugPage from "./pages/DebugPage";
+import DonatePage from "./pages/DonatePage/DonatePage";
+// import OrganizationInfoPage from "./pages/OrganizationInfoPage";
+
 
 // Import auth components
 
 // Import dashboard components
 import PrivateRoute from "./components/auth/PrivateRoute";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
-import UserManagement from "./components/dashboard/UserManagement";
+// import UsersManagement from "./components/dashboard/UsersManagement";
 
 // Import contexts
 import { AuthProvider } from "./contexts/AuthContext";
@@ -62,6 +70,7 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  
   return (
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
@@ -69,7 +78,9 @@ function App() {
           <ContextThemeProvider>
             <AuthProvider>
               <NotificationProvider>
-                <AppContent />
+                <Router>
+                  <AppContent />
+                </Router>
               </NotificationProvider>
             </AuthProvider>
           </ContextThemeProvider>
@@ -83,49 +94,50 @@ function App() {
 function AppContent() {
   const { getCurrentTheme } = useTheme();
   const theme = getCurrentTheme();
+  const location = useLocation();
+  const isDashboard = location.pathname.startsWith("/dashboard");
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        <div className="App min-h-screen bg-[var(--background-color)]">
-          <ThemeSwitcher />
-          <Navigation />
-          <Layout>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/campaigns" element={<CampaignsPage />} />
-              <Route path="/stories" element={<StoriesPage />} />
-              <Route path="/donate" element={<DonationPage />} />
-              <Route path="/volunteer" element={<VolunteerPage />} />
-              <Route path="/impact" element={<ImpactPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/map" element={<MapPage />} />
-              <Route
-                path="/dashboard/*"
-                element={
-                  <PrivateRoute>
-                    <DashboardLayout />
-                  </PrivateRoute>
-                }
-              >
-                <Route index element={<DashboardPage />} />
-                <Route path="users" element={<UserManagement />} />
-              </Route>
-              <Route path="/admin-fix" element={<AdminFixPage />} />
-              <Route path="/debug" element={<DebugPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </Layout>
-          <Footer />
-
-          {/* Toast Notifications */}
-          <Toaster position="top-right" toastOptions={toastOptions} />
-        </div>
-      </Router>
+      <div className="App min-h-screen bg-[var(--background-color)]">
+        {!isDashboard && <ThemeSwitcher />}
+        {!isDashboard && <Navigation  />}
+        <Layout>
+          <Routes>
+            {/* <Route path="/organization" element={<OrganizationInfoPage />} /> */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/campaigns" element={<CampaignsPage />} />
+            <Route path="/stories" element={<StoriesPage />} />
+            <Route path="/donations" element={<DonationsPage />} />
+            <Route path="/donate" element={<DonatePage />} />
+            <Route path="/volunteer" element={<VolunteerPage />} />
+            <Route path="/impact" element={<ImpactPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route
+              path="/dashboard/*"
+              element={
+                <PrivateRoute>
+                  <DashboardLayout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<DashboardPage />} />
+              {/* <Route path="users" element={<UsersManagement />} /> */}
+            </Route>
+            <Route path="/admin-fix" element={<AdminFixPage />} />
+            <Route path="/debug" element={<DebugPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Layout>
+        {!isDashboard && <Footer />}
+        {/* Toast Notifications */}
+        <Toaster position="top-right" toastOptions={toastOptions} />
+      </div>
     </ThemeProvider>
   );
 }

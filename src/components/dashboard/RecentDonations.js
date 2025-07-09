@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 
-const RecentDonations = ({ donations }) => {
+const RecentDonations = ({ donations, onLoadMore, hasMore }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case "completed":
@@ -36,9 +36,10 @@ const RecentDonations = ({ donations }) => {
     });
   };
 
-  return (
-    <div className="space-y-4">
-      {donations.map((donation) => (
+  // Memoize the rendered list for performance
+  const donationList = useMemo(
+    () =>
+      donations.map((donation) => (
         <div
           key={donation.id}
           className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
@@ -85,8 +86,13 @@ const RecentDonations = ({ donations }) => {
             </span>
           </div>
         </div>
-      ))}
+      )),
+    [donations]
+  );
 
+  return (
+    <div className="space-y-4">
+      {donationList}
       {/* Empty State */}
       {donations.length === 0 && (
         <div className="text-center py-8">
@@ -111,8 +117,19 @@ const RecentDonations = ({ donations }) => {
           </p>
         </div>
       )}
+      {/* Pagination: Load More Button */}
+      {hasMore && (
+        <div className="text-center mt-4">
+          <button
+            className="btn-primary px-6 py-2 rounded"
+            onClick={onLoadMore}
+          >
+            تحميل المزيد
+          </button>
+        </div>
+      )}
     </div>
   );
 };
 
-export default RecentDonations;
+export default React.memo(RecentDonations);

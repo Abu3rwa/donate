@@ -15,56 +15,77 @@ const CampaignProgress = ({ campaigns }) => {
     return "text-red-600 dark:text-red-400";
   };
 
+  // Helper to calculate progress
+  const calcProgress = (campaign) => {
+    const raised = typeof campaign.raised === "number" ? campaign.raised : 0;
+    const goal = typeof campaign.goal === "number" ? campaign.goal : 1;
+    return Math.min(100, Math.round((raised / goal) * 100));
+  };
+
   return (
     <div className="space-y-4">
-      {campaigns.map((campaign) => (
-        <div
-          key={campaign.id}
-          className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
-              {campaign.name}
-            </h3>
-            <span
-              className={`text-xs font-semibold ${getProgressTextColor(
-                campaign.progress
-              )}`}
-            >
-              {campaign.progress}%
-            </span>
-          </div>
+      {campaigns.map((campaign) => {
+        const progress = calcProgress(campaign);
+        return (
+          <div
+            key={campaign.id}
+            className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
+                {campaign.name}
+              </h3>
+              <span
+                className={`text-xs font-semibold ${getProgressTextColor(
+                  progress
+                )}`}
+              >
+                {progress.toLocaleString()}%
+              </span>
+            </div>
 
-          {/* Progress Bar */}
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
-            <div
-              className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(
-                campaign.progress
-              )}`}
-              style={{ width: `${campaign.progress}%` }}
-            />
-          </div>
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
+              <div
+                className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(
+                  progress
+                )}`}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
 
-          {/* Amount Info */}
-          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>{campaign.raised.toLocaleString("ar-EG")} جنيه</span>
-            <span>من {campaign.target.toLocaleString("ar-EG")} جنيه</span>
-          </div>
+            {/* Amount Info */}
+            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span>
+                {typeof campaign.raised === "number"
+                  ? campaign.raised.toLocaleString("ar-EG")
+                  : "—"}{" "}
+                جنيه
+              </span>
+              <span>
+                من{" "}
+                {typeof campaign.goal === "number"
+                  ? campaign.goal.toLocaleString("ar-EG")
+                  : "—"}{" "}
+                جنيه
+              </span>
+            </div>
 
-          {/* Status Badge */}
-          <div className="mt-2">
-            <span
-              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                campaign.status === "active"
-                  ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
-                  : "bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200"
-              }`}
-            >
-              {campaign.status === "active" ? "نشط" : "غير نشط"}
-            </span>
+            {/* Status Badge */}
+            <div className="mt-2">
+              <span
+                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  campaign.status === "active"
+                    ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+                    : "bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                }`}
+              >
+                {campaign.status === "active" ? "نشط" : "غير نشط"}
+              </span>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Empty State */}
       {campaigns.length === 0 && (
