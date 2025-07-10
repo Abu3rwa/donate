@@ -179,15 +179,7 @@ export const AuthProvider = ({ children }) => {
 
   // Helper functions for admin checks
   const isAdmin = (user) => {
-    console.log("🔍 isAdmin check:", {
-      user: user ? "exists" : "null",
-      adminType: user?.adminType,
-      adminLevel: user?.adminLevel,
-      adminTypeExists: user?.adminType
-        ? ADMIN_TYPES[user.adminType]
-        : "no adminType",
-      validAdminTypes: Object.values(ADMIN_TYPES),
-    });
+    
 
     return (
       user &&
@@ -246,7 +238,7 @@ export const AuthProvider = ({ children }) => {
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
         isActive: true,
-        role: "user",
+        role: "مستخدم", // Default role for new users
         ...additionalData,
       };
 
@@ -370,7 +362,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Admin management functions
-  const promoteToAdmin = async (userId, adminType) => {
+  const promoteToAdmin = async (userId, adminType, permissions = null) => {
     if (db) {
       try {
         const adminConfig = ADMIN_PERMISSIONS[adminType];
@@ -381,9 +373,10 @@ export const AuthProvider = ({ children }) => {
         await updateUserDocument(userId, {
           adminType,
           adminLevel: adminConfig.level,
-          permissions: adminConfig.permissions,
+          permissions: permissions ?? adminConfig.permissions,
           promotedAt: new Date().toISOString(),
           promotedBy: user?.uid,
+          role: adminConfig.name, // Always set Arabic role
         });
 
         // Update local state if it's the current user
@@ -392,7 +385,8 @@ export const AuthProvider = ({ children }) => {
             ...prevUser,
             adminType,
             adminLevel: adminConfig.level,
-            permissions: adminConfig.permissions,
+            permissions: permissions ?? adminConfig.permissions,
+            role: adminConfig.name, // Update local state too
           }));
         }
 
@@ -413,6 +407,7 @@ export const AuthProvider = ({ children }) => {
           permissions: [],
           demotedAt: new Date().toISOString(),
           demotedBy: user?.uid,
+          role: "مستخدم", // Always set Arabic role for regular user
         });
 
         // Update local state if it's the current user
@@ -422,6 +417,7 @@ export const AuthProvider = ({ children }) => {
             adminType: null,
             adminLevel: 0,
             permissions: [],
+            role: "مستخدم", // Update local state too
           }));
         }
 

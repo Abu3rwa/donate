@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { NAVIGATION_AR, APP_CONFIG } from "../../constants";
+import { useOrganizationInfo } from "../../contexts/OrganizationInfoContext";
 import ThemeSwitcher from "../ThemeSwitcher";
 import logo from '../../assets/tempLogo.png';
 
@@ -18,6 +19,7 @@ const Navigation = ({user}) => {
   const { darkMode, toggleDarkMode } = useTheme();
   const { t } = useLanguage();
   const location = useLocation();
+  const { orgInfo } = useOrganizationInfo();
 
   // Handle scroll effect
   useEffect(() => {
@@ -92,11 +94,11 @@ const Navigation = ({user}) => {
               />
               <div className="hidden sm:block">
                 <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">
-                  {APP_CONFIG.name}
+                  {orgInfo?.name || APP_CONFIG.name}
                 </h1>
-                <p className="text-xs sm:text-sm text-[var(--text-secondary)]">
-                  {APP_CONFIG.description}
-                </p>
+                <small className="text-xs sm:text-sm text-[var(--text-secondary)]">
+                  {orgInfo?.longName || APP_CONFIG.longName}
+                </small>
               </div>
             </Link>
           </div>

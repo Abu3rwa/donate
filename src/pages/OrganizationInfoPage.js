@@ -3,54 +3,30 @@ import { useAuth } from "../contexts/AuthContext";
 import { getOrgInfo, setOrgInfo } from "../services/orgInfoService";
 import { uploadLogo } from "../services/fileUploadService";
 import { APP_CONFIG } from "../constants";
+import { useOrganizationInfo } from "../contexts/OrganizationInfoContext";
 import { useTheme } from "../contexts/ThemeContext";
-
-const defaultOrgInfo = {
-  name: APP_CONFIG.name,
-  longName: APP_CONFIG.nameEn,
-  logo: require("../assets/tempLogo.png"),
-  contacts: { 
-    phones: [APP_CONFIG.contactPhone], 
-    emails: [APP_CONFIG.supportEmail] 
-  },
-  social: [
-    { name: "الموقع الإلكتروني", url: APP_CONFIG.url }
-  ],
-};
 
 const OrganizationInfoPage = () => {
   const { user } = useAuth();
   const isAdmin = user && user.adminType;
   const { currentTheme, changeTheme, availableThemes } = useTheme();
-  const [orgInfo, setOrgInfoState] = useState(defaultOrgInfo);
+  const { orgInfo: orgInfoState, saveOrgInfo, loading: orgInfoLoading } = useOrganizationInfo();
+  const [orgInfo, setOrgInfoState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editMode, setEditMode] = useState(false);
-  const [form, setForm] = useState(defaultOrgInfo);
+  const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    setLoading(true);
-    getOrgInfo()
-      .then((data) => {
-        if (data) {
-          setOrgInfoState(data);
-        } else {
-          // If no data in Firestore, use default data from APP_CONFIG
-          console.log("No organization data in Firestore, using default data");
-          setOrgInfoState(defaultOrgInfo);
-        }
-        setLoading(false);
-      })
-      .catch((e) => {
-        console.error("Error loading organization data:", e);
-        // Use default data on error
-        setOrgInfoState(defaultOrgInfo);
-        setLoading(false);
-      });
-  }, []);
+    if (!orgInfoLoading) {
+      setOrgInfoState(orgInfoState);
+      setForm(orgInfoState);
+      setLoading(false);
+    }
+  }, [orgInfoState, orgInfoLoading]);
 
   const handleEdit = () => {
     setForm(orgInfo);
@@ -153,13 +129,12 @@ const OrganizationInfoPage = () => {
     setError("");
     try {
       console.log("Saving organization data:", form);
-      await setOrgInfo(form);
+      await saveOrgInfo(form);
       console.log("Organization data saved successfully");
       setOrgInfoState(form);
       setEditMode(false);
     } catch (e) {
       console.error("Error saving organization data:", e);
-      
       // Check if it's a permission error
       if (e.message && e.message.includes('permission')) {
         setError("فشل حفظ البيانات: لا توجد صلاحيات كافية. تأكد من أنك مسجل دخول كمدير.");
@@ -171,7 +146,7 @@ const OrganizationInfoPage = () => {
     }
   };
 
-  if (loading) return <div className="text-center py-8">جاري التحميل...</div>;
+  if (loading || !orgInfo) return <div className="text-center py-8">جاري التحميل...</div>;
 
   return (
     <div className="min-h-screen bg-[var(--background-color)] p-2 sm:p-4 lg:p-8 flex flex-col items-center" dir="rtl">
@@ -220,7 +195,7 @@ const OrganizationInfoPage = () => {
                   title={editMode ? 'اضغط أو اسحب صورة هنا لتغيير الشعار' : ''}
                 >
                   <img
-                    src={editMode ? form.logo : orgInfo.logo || require("../assets/tempLogo.png")}
+                    src={editMode && form ? form.logo : orgInfo.logo || require("../assets/tempLogo.png")}
                     alt="شعار الجمعية"
                     className="w-full h-full object-cover"
                   />
@@ -254,7 +229,7 @@ const OrganizationInfoPage = () => {
               {/* Organization Info */}
               <div className="flex-1 text-center sm:text-right">
                 <div className="space-y-2">
-                  {editMode ? (
+                  {editMode && form ? (
                     <input
                       type="text"
                       name="name"
@@ -266,7 +241,7 @@ const OrganizationInfoPage = () => {
                   ) : (
                     <h2 className="text-xl sm:text-2xl font-bold">{orgInfo.name}</h2>
                   )}
-                  {editMode ? (
+                  {editMode && form ? (
                     <input
                       type="text"
                       name="longName"
@@ -277,6 +252,30 @@ const OrganizationInfoPage = () => {
                     />
                   ) : (
                     <p className="text-base sm:text-lg text-white/90">{orgInfo.longName}</p>
+                  )}
+                  {editMode && form ? (
+                    <input
+                      type="text"
+                      name="description"
+                      value={form.description || ""}
+                      onChange={handleChange}
+                      className="text-base sm:text-lg bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white/90 placeholder-white/50 w-full"
+                      placeholder="وصف الجمعية"
+                    />
+                  ) : (
+                    <p className="text-base sm:text-lg text-white/80 mt-1">{orgInfo.description}</p>
+                  )}
+                  {editMode && form ? (
+                    <input
+                      type="text"
+                      name="location"
+                      value={form.location || ""}
+                      onChange={handleChange}
+                      className="text-base sm:text-lg bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white/90 placeholder-white/50 w-full"
+                      placeholder="موقع الجمعية (العنوان)"
+                    />
+                  ) : (
+                    <p className="text-base sm:text-lg text-white/80 mt-1">{orgInfo.location}</p>
                   )}
                 </div>
               </div>
@@ -312,7 +311,7 @@ const OrganizationInfoPage = () => {
                 <div>
                   <h4 className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">أرقام الهاتف</h4>
                   <div className="space-y-2">
-                    {(editMode ? form.contacts.phones : orgInfo.contacts.phones).map((phone, i) => (
+                    {(editMode && form ? form.contacts.phones : orgInfo.contacts.phones).map((phone, i) => (
                       <div key={i} className="flex items-center gap-3 flex-wrap">
                         <div className="w-7 h-7 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
                           <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -356,7 +355,7 @@ const OrganizationInfoPage = () => {
                 <div>
                   <h4 className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">البريد الإلكتروني</h4>
                   <div className="space-y-2">
-                    {(editMode ? form.contacts.emails : orgInfo.contacts.emails).map((email, i) => (
+                    {(editMode && form ? form.contacts.emails : orgInfo.contacts.emails).map((email, i) => (
                       <div key={i} className="flex items-center gap-3 flex-wrap">
                         <div className="w-7 h-7 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
                           <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -408,7 +407,7 @@ const OrganizationInfoPage = () => {
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">روابط التواصل الاجتماعي</h3>
               </div>
               <div className="space-y-3">
-                {(editMode ? form.social : orgInfo.social).map((link, i) => (
+                {(editMode && form ? form.social : orgInfo.social).map((link, i) => (
                   <div key={i} className="flex items-center gap-3 flex-wrap">
                     <div className="w-7 h-7 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
                       <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

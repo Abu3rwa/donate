@@ -77,7 +77,7 @@ const SideBar = ({ isOpen, onClose, user, onLogout, navigationItems }) => {
         </>
       )}
       {/* Desktop Sidebar (static) */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:right-0 lg:border-l lg:border-gray-200 dark:lg:border-gray-800 lg:bg-white dark:lg:bg-gray-900 lg:top-0 lg:h-screen lg:z-40">
+      <aside className="hidden pt-20 lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:right-0 lg:border-l lg:border-gray-200 dark:lg:border-gray-800 lg:bg-white dark:lg:bg-gray-900 lg:top-0 lg:h-screen lg:z-40">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center">
             <div className="h-10 w-10 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0">

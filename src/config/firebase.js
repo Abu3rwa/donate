@@ -21,9 +21,23 @@ console.log("✅ Firebase configuration loaded successfully");
 // Initialize Firebase
 const app = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(app);
+
+// Ensure Auth is properly configured
+console.log("🔧 Auth configuration:", {
+  app: auth.app,
+  projectId: auth.app.options.projectId,
+  authDomain: auth.app.options.authDomain
+});
 const db = getFirestore(app);
 const storage = getStorage(app);
-const functions = getFunctions(app);
+const functions = getFunctions(app, "us-central1");
+
+// Ensure Functions are properly configured for callable functions
+console.log("🔧 Functions configuration:", {
+  region: functions.region,
+  app: functions.app,
+  projectId: functions.app.options.projectId
+});
 
 let analytics = null;
 isSupported().then((yes) => {

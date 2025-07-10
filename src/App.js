@@ -50,6 +50,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider as ContextThemeProvider } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { OrganizationInfoProvider } from "./contexts/OrganizationInfoContext";
 
 // Import constants
 
@@ -78,9 +79,11 @@ function App() {
           <ContextThemeProvider>
             <AuthProvider>
               <NotificationProvider>
-                <Router>
-                  <AppContent />
-                </Router>
+                <OrganizationInfoProvider>
+                  <Router>
+                    <AppContent />
+                  </Router>
+                </OrganizationInfoProvider>
               </NotificationProvider>
             </AuthProvider>
           </ContextThemeProvider>
@@ -103,6 +106,7 @@ function AppContent() {
       <div className="App min-h-screen bg-[var(--background-color)]">
         {!isDashboard && <ThemeSwitcher />}
         {!isDashboard && <Navigation  />}
+
         <Layout>
           <Routes>
             {/* <Route path="/organization" element={<OrganizationInfoPage />} /> */}

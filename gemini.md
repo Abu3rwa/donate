@@ -1,5 +1,4 @@
-# Project Overview and Gemini Integration Guide
-
+# Project Overview and Gemini Integration Guide\
 This document provides a comprehensive overview of the Assaatah Donation Site project, its key features, setup instructions, and how Google Gemini is integrated to enhance functionality.
 
 ## 1. Project Description

@@ -1,5 +1,6 @@
 import React from "react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth, ADMIN_PERMISSIONS } from "../contexts/AuthContext";
+import PERMISSIONS_AR from "../helpers/permissionsMap";
 
 const DebugPage = () => {
   const {
@@ -42,17 +43,19 @@ const DebugPage = () => {
                 <strong>Display Name:</strong> {user?.displayName}
               </p>
               <p>
-                <strong>Admin Type:</strong> {user?.adminType || "null"}
+                <strong>Admin Type:</strong> {user?.adminType ? (ADMIN_PERMISSIONS[user.adminType]?.name || user.adminType) : "null"}
               </p>
               <p>
                 <strong>Admin Level:</strong> {user?.adminLevel || "null"}
               </p>
               <p>
                 <strong>Permissions:</strong>{" "}
-                {JSON.stringify(user?.permissions || [])}
+                {user?.permissions && user.permissions.length > 0
+                  ? user.permissions.map((perm) => PERMISSIONS_AR[perm] || perm).join(", ")
+                  : "—"}
               </p>
               <p>
-                <strong>Role:</strong> {user?.role}
+                <strong>Role:</strong> {user?.adminType ? (ADMIN_PERMISSIONS[user.adminType]?.name || user.role) : user?.role}
               </p>
             </div>
           </div>

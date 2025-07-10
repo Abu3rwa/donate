@@ -21,3 +21,12 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Ignore import files and folders
+*.iml
+*.import
+import/
+imports/
+
+# Ignore assets folder
+/src/assets/

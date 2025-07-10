@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Search, Plus, Edit, Trash2, Users, Mail, Shield, X, Check, AlertCircle } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Users, Mail, Shield, X, Check, AlertCircle, MoreVertical } from "lucide-react";
 import { getAllUsers, deleteUserById, updateUserById, createUserByAdminCloud } from "../services/userService";
-
+import { useAuth, ADMIN_TYPES, ADMIN_PERMISSIONS } from "../contexts/AuthContext";
+import AddUserForm from "../components/dashboard/AddUserForm";
+import { getAuth } from "firebase/auth";
+import PERMISSIONS_AR from "../helpers/permissionsMap";
 const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -13,8 +16,15 @@ const UserManagementPage = () => {
   const [form, setForm] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [openActionMenu, setOpenActionMenu] = useState(null); // user id/uid or null
+  const [showPermissions, setShowPermissions] = useState({ open: false, user: null });
+  const [roleChangeModal, setRoleChangeModal] = useState({ open: false, user: null, direction: null });
+  const [roleChangeForm, setRoleChangeForm] = useState({ adminType: '', permissions: [] });
 
-  useEffect(() => {
+  const { user: currentUser, promoteToAdmin, demoteFromAdmin } = useAuth();
+
+  const auth = getAuth();
+   useEffect(() => {
     fetchUsers();
   }, []);
 
@@ -26,6 +36,19 @@ const UserManagementPage = () => {
     );
     setFilteredUsers(filtered);
   }, [users, searchTerm]);
+
+  // Close dropdown on outside click
+  React.useEffect(() => {
+    const handleClick = (e) => {
+      if (!e.target.closest('.user-action-menu')) {
+        setOpenActionMenu(null);
+      }
+    };
+    if (openActionMenu !== null) {
+      document.addEventListener('mousedown', handleClick);
+      return () => document.removeEventListener('mousedown', handleClick);
+    }
+  }, [openActionMenu]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -55,7 +78,10 @@ const UserManagementPage = () => {
     setForm({
       displayName: user.displayName || user.name || "",
       email: user.email || "",
-      role: user.role || user.adminType || ""
+      role: user.role || user.adminType || "",
+      adminType: user.adminType || "",
+      adminLevel: user.adminLevel || 0,
+      permissions: user.permissions || [],
     });
     setShowForm(true);
   };
@@ -78,16 +104,52 @@ const UserManagementPage = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // Helper: get admin type options (excluding super_admin for safety)
+  const adminTypeOptions = Object.keys(ADMIN_PERMISSIONS)
+    .map((key) => ({ value: key, label: ADMIN_PERMISSIONS[key].name }));
+
+  // Helper: get all unique permissions
+  const allPermissions = Array.from(new Set(Object.values(ADMIN_PERMISSIONS).flatMap(p => p.permissions))).filter(p => p !== 'all');
+
+  // When adminType changes, update adminLevel and permissions in form
+  const handleAdminTypeChange = (e) => {
+    const adminType = e.target.value;
+    const adminConfig = ADMIN_PERMISSIONS[adminType];
+    setForm((prev) => ({
+      ...prev,
+      adminType,
+      adminLevel: adminConfig?.level || 0,
+      permissions: adminType === ADMIN_TYPES.SUPER_ADMIN ? ['all'] : adminConfig?.permissions?.filter(p => p !== 'all') || [],
+    }));
+  };
+
   const handleFormSave = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
+      let saveData = { ...form };
+      if (form.role === "مدير" && form.adminType) {
+        const adminConfig = ADMIN_PERMISSIONS[form.adminType];
+        saveData = {
+          ...saveData,
+          adminType: form.adminType,
+          adminLevel: adminConfig.level,
+          permissions: form.permissions || [],
+        };
+      } else {
+        saveData = {
+          ...saveData,
+          adminType: null,
+          adminLevel: 0,
+          permissions: [],
+        };
+      }
       if (editUser) {
-        await updateUserById(editUser.id || editUser.uid, form);
-        setUsers((prev) => prev.map((u) => (u.id === editUser.id || u.uid === editUser.uid ? { ...u, ...form } : u)));
+        await updateUserById(editUser.id || editUser.uid, saveData);
+        setUsers((prev) => prev.map((u) => (u.id === editUser.id || u.uid === editUser.uid ? { ...u, ...saveData } : u)));
         showNotification("تم تحديث المستخدم بنجاح");
       } else {
-        const newUser = await createUserByAdminCloud(form);
+        const newUser = await createUserByAdminCloud(auth, saveData);
         setUsers((prev) => [newUser, ...prev]);
         showNotification("تم إضافة المستخدم بنجاح");
       }
@@ -103,7 +165,7 @@ const UserManagementPage = () => {
 
   const handleAddUserClick = () => {
     setEditUser(null);
-    setForm({ displayName: "", email: "", role: "" });
+    setForm({ displayName: "", email: "", role: "", adminType: "", adminLevel: 0, permissions: [] });
     setShowForm(true);
   };
 
@@ -121,6 +183,115 @@ const UserManagementPage = () => {
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
     }
   };
+
+  // Helper to get adminType from Arabic role name
+  const getAdminTypeByName = (name) => {
+    return Object.keys(ADMIN_PERMISSIONS).find(
+      (key) => ADMIN_PERMISSIONS[key].name === name
+    );
+  };
+
+  // Helper to get next/prev role for upgrade/downgrade
+  const getNextRole = (adminType) => {
+    const levels = Object.values(ADMIN_PERMISSIONS)
+      .map((p) => p.level)
+      .sort((a, b) => a - b);
+    const current = ADMIN_PERMISSIONS[adminType]?.level || 0;
+    const nextLevel = levels.find((lvl) => lvl > current);
+    if (!nextLevel) return null;
+    return Object.keys(ADMIN_PERMISSIONS).find(
+      (key) => ADMIN_PERMISSIONS[key].level === nextLevel
+    );
+  };
+  const getPrevRole = (adminType) => {
+    const levels = Object.values(ADMIN_PERMISSIONS)
+      .map((p) => p.level)
+      .sort((a, b) => a - b);
+    const current = ADMIN_PERMISSIONS[adminType]?.level || 0;
+    const prevLevel = [...levels].reverse().find((lvl) => lvl < current);
+    if (!prevLevel) return null;
+    return Object.keys(ADMIN_PERMISSIONS).find(
+      (key) => ADMIN_PERMISSIONS[key].level === prevLevel
+    );
+  };
+
+  // Upgrade user role
+  const handleUpgrade = (targetUser) => {
+    const adminType = targetUser.adminType || getAdminTypeByName(targetUser.role);
+    const nextType = getNextRole(adminType);
+    if (!nextType) return;
+    setRoleChangeModal({ open: true, user: targetUser, direction: 'upgrade' });
+    setRoleChangeForm({
+      adminType: nextType,
+      permissions: ADMIN_PERMISSIONS[nextType]?.permissions?.filter(p => p !== 'all') || [],
+    });
+  };
+
+  // Downgrade user role
+  const handleDowngrade = (targetUser) => {
+    const adminType = targetUser.adminType || getAdminTypeByName(targetUser.role);
+    const prevType = getPrevRole(adminType);
+    setRoleChangeModal({ open: true, user: targetUser, direction: 'downgrade' });
+    setRoleChangeForm({
+      adminType: prevType || '',
+      permissions: prevType ? ADMIN_PERMISSIONS[prevType]?.permissions?.filter(p => p !== 'all') : [],
+    });
+  };
+
+  const handleRoleChangeAdminType = (e) => {
+    const adminType = e.target.value;
+    setRoleChangeForm({
+      adminType,
+      permissions: adminType === ADMIN_TYPES.SUPER_ADMIN ? ['all'] : ADMIN_PERMISSIONS[adminType]?.permissions?.filter(p => p !== 'all') || [],
+    });
+  };
+  const handleRoleChangePermission = (perm, checked) => {
+    setRoleChangeForm((prev) => ({
+      ...prev,
+      permissions: checked
+        ? [...prev.permissions, perm]
+        : prev.permissions.filter((p) => p !== perm),
+    }));
+  };
+  const handleRoleChangeConfirm = async () => {
+    setLoading(true);
+    const { user, direction } = roleChangeModal;
+    const { adminType, permissions } = roleChangeForm;
+    try {
+      if (!adminType) {
+        // Demote to regular user
+        await demoteFromAdmin(user.id || user.uid);
+        setUsers((prev) =>
+          prev.map((u) =>
+            (u.id === user.id || u.uid === user.uid)
+              ? { ...u, adminType: null, role: 'مستخدم', permissions: [] }
+              : u
+          )
+        );
+        showNotification('تم تخفيض المستخدم إلى مستخدم عادي');
+      } else {
+        await promoteToAdmin(user.id || user.uid, adminType, permissions);
+        setUsers((prev) =>
+          prev.map((u) =>
+            (u.id === user.id || u.uid === user.uid)
+              ? { ...u, adminType, role: ADMIN_PERMISSIONS[adminType].name, permissions }
+              : u
+          )
+        );
+        showNotification(direction === 'upgrade' ? 'تم ترقية المستخدم بنجاح' : 'تم تخفيض رتبة المستخدم بنجاح');
+      }
+    } catch (err) {
+      showNotification(direction === 'upgrade' ? 'فشل في ترقية المستخدم' : 'فشل في تخفيض المستخدم', 'error');
+    } finally {
+      setLoading(false);
+      setRoleChangeModal({ open: false, user: null, direction: null });
+      setRoleChangeForm({ adminType: '', permissions: [] });
+    }
+  };
+
+  // Helper to check if a user is an admin (not super admin)
+  const isAdmin = (user) => user.adminType && user.adminType !== ADMIN_TYPES.SUPER_ADMIN;
+  const isRegularUser = (user) => !user.adminType;
 
   return (
     <div className="min-h-screen bg-[var(--background-color)] text-[var(--text-primary)]" dir="rtl">
@@ -196,71 +367,15 @@ const UserManagementPage = () => {
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
             <div className="bg-[var(--paper-color)] rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <h2 className="text-xl font-bold mb-4 text-[var(--text-primary)]">
-                  {editUser ? "تعديل المستخدم" : "إضافة مستخدم جديد"}
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-[var(--text-secondary)]">
-                      الاسم الكامل
-                    </label>
-                    <input
-                      type="text"
-                      name="displayName"
-                      value={form.displayName || ""}
-                      onChange={handleFormChange}
-                      className="w-full px-3 py-2 border border-[var(--divider)] rounded-lg bg-[var(--paper-color)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-[var(--text-secondary)]">
-                      البريد الإلكتروني
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={form.email || ""}
-                      onChange={handleFormChange}
-                      className="w-full px-3 py-2 border border-[var(--divider)] rounded-lg bg-[var(--paper-color)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-[var(--text-secondary)]">
-                      الدور
-                    </label>
-                    <select
-                      name="role"
-                      value={form.role || ""}
-                      onChange={handleFormChange}
-                      className="w-full px-3 py-2 border border-[var(--divider)] rounded-lg bg-[var(--paper-color)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent"
-                    >
-                      <option value="">اختر الدور</option>
-                      <option value="مدير">مدير</option>
-                      <option value="محرر">محرر</option>
-                      <option value="مستخدم">مستخدم</option>
-                    </select>
-                  </div>
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      type="button"
-                      onClick={handleCancel}
-                      className="flex-1 py-2 px-4 border border-[var(--divider)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--background-color)] transition-colors"
-                      disabled={loading}
-                    >
-                      إلغاء
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleFormSave}
-                      className="flex-1 py-2 px-4 bg-[var(--primary-color)] hover:bg-[var(--primary-dark)] text-white rounded-lg transition-colors disabled:opacity-50"
-                      disabled={loading}
-                    >
-                      {loading ? "جاري الحفظ..." : (editUser ? "حفظ التعديلات" : "إضافة المستخدم")}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <AddUserForm
+                onCancel={handleCancel}
+                onUserAdded={(user) => {
+                  setUsers((prev) => [user, ...prev]);
+                  setShowForm(false);
+                  setEditUser(null);
+                }}
+                initialData={editUser}
+              />
             </div>
           </div>
         )}
@@ -307,7 +422,7 @@ const UserManagementPage = () => {
             <p className="text-[var(--text-secondary)]">جاري تحميل المستخدمين...</p>
           </div>
         ) : (
-          <div className="bg-[var(--paper-color)] rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-[var(--paper-color)] rounded-xl shadow-sm overflow-visible">
             {/* Desktop Table */}
             <div className="hidden md:block">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -344,25 +459,70 @@ const UserManagementPage = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.role || user.adminType)}`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.adminType ? ADMIN_PERMISSIONS[user.adminType]?.name : user.role)}`}>
                           <Shield className="h-3 w-3 ml-1" />
-                          {user.role || user.adminType || "—"}
+                          {user.adminType
+                            ? ADMIN_PERMISSIONS[user.adminType]?.name || user.role
+                            : user.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium relative">
                         <div className="flex gap-2">
                           <button
-                            onClick={() => handleEdit(user)}
-                            className="text-[var(--primary-color)] hover:text-[var(--primary-dark)] transition-colors"
+                            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none"
+                            onClick={() => setOpenActionMenu(openActionMenu === (user.id || user.uid) ? null : (user.id || user.uid))}
+                            aria-label="إجراءات المستخدم"
                           >
-                            <Edit className="h-4 w-4" />
+                            <MoreVertical className="h-5 w-5" />
                           </button>
-                          <button
-                            onClick={() => setDeleteConfirm(user)}
-                            className="text-[var(--secondary-color)] hover:text-[var(--secondary-dark)] transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {openActionMenu === (user.id || user.uid) && (
+                            <div className="user-action-menu absolute left-0 z-50 mt-2 w-40 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 text-right">
+                              <button
+                                onClick={() => { setOpenActionMenu(null); handleEdit(user); }}
+                                className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                              >
+                                <Edit className="h-4 w-4" /> تعديل
+                              </button>
+                              <button
+                                onClick={() => { setOpenActionMenu(null); setDeleteConfirm(user); }}
+                                className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" /> حذف
+                              </button>
+                              <button
+                                onClick={() => { setOpenActionMenu(null); setShowPermissions({ open: true, user }); }}
+                                className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                              >
+                                <Shield className="h-4 w-4" /> عرض الصلاحيات
+                              </button>
+                              {/* Super admin role controls */}
+                              {currentUser?.adminType === ADMIN_TYPES.SUPER_ADMIN &&
+                                currentUser?.uid !== (user.id || user.uid) && (
+                                  <>
+                                    {/* Upgrade: show for regular users and admins (not super admin) */}
+                                    {isRegularUser(user) || isAdmin(user) ? (
+                                      <button
+                                        onClick={() => { setOpenActionMenu(null); handleUpgrade(user); }}
+                                        className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-green-600"
+                                        disabled={loading}
+                                      >
+                                        ▲ ترقية الدور
+                                      </button>
+                                    ) : null}
+                                    {/* Downgrade: show for admins (not super admin) */}
+                                    {isAdmin(user) ? (
+                                      <button
+                                        onClick={() => { setOpenActionMenu(null); handleDowngrade(user); }}
+                                        className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-yellow-600"
+                                        disabled={loading}
+                                      >
+                                        ▼ تخفيض الدور
+                                      </button>
+                                    ) : null}
+                                  </>
+                                )}
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -388,25 +548,69 @@ const UserManagementPage = () => {
                           <Mail className="h-3 w-3 ml-1" />
                           {user.email || "—"}
                         </div>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.role || user.adminType)}`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.adminType ? ADMIN_PERMISSIONS[user.adminType]?.name : user.role)}`}>
                           <Shield className="h-3 w-3 ml-1" />
-                          {user.role || user.adminType || "—"}
+                          {user.adminType
+                            ? ADMIN_PERMISSIONS[user.adminType]?.name || user.role
+                            : user.role}
                         </span>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 relative">
                       <button
-                        onClick={() => handleEdit(user)}
-                        className="p-2 text-[var(--primary-color)] hover:text-[var(--primary-dark)] transition-colors"
+                        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none"
+                        onClick={() => setOpenActionMenu(openActionMenu === (user.id || user.uid) ? null : (user.id || user.uid))}
+                        aria-label="إجراءات المستخدم"
                       >
-                        <Edit className="h-4 w-4" />
+                        <MoreVertical className="h-5 w-5" />
                       </button>
-                      <button
-                        onClick={() => setDeleteConfirm(user)}
-                        className="p-2 text-[var(--secondary-color)] hover:text-[var(--secondary-dark)] transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {openActionMenu === (user.id || user.uid) && (
+                        <div className="user-action-menu absolute left-0 z-50 mt-2 w-40 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 text-right">
+                          <button
+                            onClick={() => { setOpenActionMenu(null); handleEdit(user); }}
+                            className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" /> تعديل
+                          </button>
+                          <button
+                            onClick={() => { setOpenActionMenu(null); setDeleteConfirm(user); }}
+                            className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" /> حذف
+                          </button>
+                          <button
+                            onClick={() => { setOpenActionMenu(null); setShowPermissions({ open: true, user }); }}
+                            className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                          >
+                            <Shield className="h-4 w-4" /> عرض الصلاحيات
+                          </button>
+                          {currentUser?.adminType === ADMIN_TYPES.SUPER_ADMIN &&
+                            currentUser?.uid !== (user.id || user.uid) && (
+                              <>
+                                {/* Upgrade: show for regular users and admins (not super admin) */}
+                                {isRegularUser(user) || isAdmin(user) ? (
+                                  <button
+                                    onClick={() => { setOpenActionMenu(null); handleUpgrade(user); }}
+                                    className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-green-600"
+                                    disabled={loading}
+                                  >
+                                    ▲ ترقية الدور
+                                  </button>
+                                ) : null}
+                                {/* Downgrade: show for admins (not super admin) */}
+                                {isAdmin(user) ? (
+                                  <button
+                                    onClick={() => { setOpenActionMenu(null); handleDowngrade(user); }}
+                                    className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-yellow-600"
+                                    disabled={loading}
+                                  >
+                                    ▼ تخفيض الدور
+                                  </button>
+                                ) : null}
+                              </>
+                            )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -424,6 +628,104 @@ const UserManagementPage = () => {
           </div>
         )}
       </div>
+
+      {showPermissions.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-[var(--paper-color)] rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
+            <h2 className="text-lg font-bold mb-4 text-[var(--text-primary)]">صلاحيات المستخدم</h2>
+            <div className="mb-4">
+              <div className="font-medium text-[var(--text-secondary)] mb-2">{showPermissions.user.displayName || showPermissions.user.name || "—"}</div>
+              <div className="text-xs text-[var(--text-secondary)] mb-2">
+                الدور: {showPermissions.user.role || showPermissions.user.adminType || "—"}
+              </div>
+            </div>
+            <ul className="list-disc pr-6 text-sm text-[var(--text-primary)]">
+              {(showPermissions.user.permissions && showPermissions.user.permissions.length > 0
+                ? showPermissions.user.permissions
+                : (showPermissions.user.adminType && ADMIN_PERMISSIONS[showPermissions.user.adminType]?.permissions) || [])
+                .map((perm, idx) => (
+                  <li key={idx}>{PERMISSIONS_AR[perm] || perm}</li>
+                ))}
+            </ul>
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setShowPermissions({ open: false, user: null })}
+                className="py-2 px-4 border border-[var(--divider)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--background-color)] transition-colors"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Role Change Modal for Upgrade/Downgrade */}
+      {roleChangeModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-[var(--paper-color)] rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold mb-4 text-[var(--text-primary)]">
+                {roleChangeModal.direction === 'upgrade' ? 'ترقية المستخدم' : 'تخفيض المستخدم'}
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-[var(--text-secondary)]">نوع المسؤول</label>
+                  <select
+                    value={roleChangeForm.adminType || ''}
+                    onChange={handleRoleChangeAdminType}
+                    className="w-full px-3 py-2 border border-[var(--divider)] rounded-lg bg-[var(--paper-color)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent"
+                  >
+                    <option value="">مستخدم عادي</option>
+                    {adminTypeOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                {roleChangeForm.adminType === ADMIN_TYPES.SUPER_ADMIN && (
+                  <div className="mt-2 p-2 bg-yellow-100 text-yellow-800 rounded text-sm">
+                    ⚠️ سيتم منح هذا المستخدم جميع الصلاحيات (مدير عام). الرجاء التأكد من أنك تريد تعيين هذا الدور.
+                  </div>
+                )}
+                {roleChangeForm.adminType === ADMIN_TYPES.SUPER_ADMIN ? null : (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium mb-2 text-[var(--text-secondary)]">الصلاحيات</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {allPermissions.map((perm) => (
+                        <label key={perm} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={roleChangeForm.permissions.includes(perm)}
+                            onChange={e => handleRoleChangePermission(perm, e.target.checked)}
+                          />
+                          {perm}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setRoleChangeModal({ open: false, user: null, direction: null })}
+                    className="flex-1 py-2 px-4 border border-[var(--divider)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--background-color)] transition-colors"
+                    disabled={loading}
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRoleChangeConfirm}
+                    className="flex-1 py-2 px-4 bg-[var(--primary-color)] hover:bg-[var(--primary-dark)] text-white rounded-lg transition-colors disabled:opacity-50"
+                    disabled={loading}
+                  >
+                    {loading ? 'جاري الحفظ...' : 'تأكيد'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

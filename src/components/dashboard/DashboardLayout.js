@@ -1,5 +1,5 @@
 import React from "react";
-import { Outlet, Routes, Route, useLocation, Link } from "react-router-dom";
+import { Outlet, Routes, Route, useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import SideBar from "./SideBar";
 import DashboardHeader from "./DashboardHeader";
@@ -15,6 +15,7 @@ import UserManagementPage from "../../pages/UserManagementPage";
 import DonationsPage from "../../pages/DonationsPage";
 import OrganizationInfoPage from "../../pages/OrganizationInfoPage";
 import Dashboard from "./Dashboard";
+import BottomNav from "./BottomNav";
 // import UsersManagement from "./UsersManagement";
 
 const DashboardLayout = () => {
@@ -22,6 +23,7 @@ const DashboardLayout = () => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const isMobile = useMediaQuery({ maxWidth: 767 });
+  const navigate = useNavigate();
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -132,6 +134,7 @@ const DashboardLayout = () => {
           logout={logout}
             hasPermission={useAuth().hasPermission}
         />
+
         <main className="p-4 sm:p-6 lg:p-8 flex-1 pt-10">
           <Routes>
             <Route path="add-donation" element={<AddDonationForm />} />
@@ -147,7 +150,12 @@ const DashboardLayout = () => {
             <Route path="*" element={<Outlet />} />
           </Routes>
         </main>
-      
+        <BottomNav
+          user={user}
+          hasPermission={useAuth().hasPermission}
+          onAddDonation={() => navigate("/dashboard/add-donation")}
+          onShowFinancialReports={() => navigate("/dashboard/financial-reports")}
+        />
       </div>
     </div>
   );

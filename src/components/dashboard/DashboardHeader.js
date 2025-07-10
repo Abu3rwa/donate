@@ -3,10 +3,11 @@ import QuickActions from './QuickActions'
 import ThemeSwitcher from "../ThemeSwitcher";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../../contexts/LanguageContext";
-import logo from "../../assets/tempLogo.png";
- 
+import { useOrganizationInfo } from "../../contexts/OrganizationInfoContext";
+
 const DashboardHeader = ({ onMenuClick, user, onLogout, adminInfo, ...quickActionsProps }) => {
   const { getDirection } = useLanguage();
+  const { orgInfo } = useOrganizationInfo();
   const dir = getDirection();
   return (
     
@@ -18,12 +19,18 @@ const DashboardHeader = ({ onMenuClick, user, onLogout, adminInfo, ...quickActio
           <div className="flex items-center justify-between">
            
             <Link to="/dashboard" className="ml-4 lg:mr-0 flex flex-row items-start gap-2">
-            <img src={logo} alt="logo" className="w-10 h-10" />
+            <div className="flex flex-col items-start gap-2 justify-center align-center">
+            <img src={orgInfo?.logo} alt="logo" className="w-10 h-10" />
+            {/* Organization name under logo, centered */}
+            <h2 className="text-xs text-gray-500 dark:text-gray-400 self-center">{orgInfo?.name}</h2>
+
+
+            </div>
                <div>
 
                
               <h1 className="text-xl font-semibold text-gray-900 dark:text-white">لوحة التحكم</h1>
-              <small className="text-xs text-gray-500 dark:text-gray-400">جمعية السعاتة الدومة الخيرية</small>
+              <small className="text-xs text-gray-500 dark:text-gray-400">{orgInfo?.longName}</small>
               </div></Link>
             {/* Mobile Menu Button */}
 

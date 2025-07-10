@@ -2,47 +2,129 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow users to read/write their own user document
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    // ======== Helper Functions ========
+    // Get user data document for a given user ID.
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
     }
 
-    // Function to check if the current user is admin
+    // Check if a user is signed in.
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // Check if the signed-in user has the 'super_admin' role.
+    function isSuperAdmin() {
+      return isSignedIn() && getUserData(request.auth.uid).adminType == "super_admin";
+    }
+
+    // Check if the signed-in user has the 'admin' role.
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.adminType != null;
+      return isSignedIn() && getUserData(request.auth.uid).adminType == "admin";
     }
 
-    // Allow admins to read all users
+    // Check if the signed-in user has the 'donation_manager' role.
+    function isDonationManager() {
+      return isSignedIn() && getUserData(request.auth.uid).adminType == "donation_manager";
+    }
+    
+    // Check if the signed-in user has the 'campaign_manager' role.
+    function isCampaignManager() {
+      return isSignedIn() && getUserData(request.auth.uid).adminType == "campaign_manager";
+    }
+
+    // Check if the signed-in user has the 'finance_manager' role.
+    function isFinanceManager() {
+      return isSignedIn() && getUserData(request.auth.uid).adminType == "finance_manager";
+    }
+    
+    // Check if the signed-in user has the 'volunteer_coordinator' role.
+    function isVolunteerCoordinator() {
+        return isSignedIn() && getUserData(request.auth.uid).adminType == "volunteer_coordinator";
+    }
+
+    // Check if the signed-in user has the 'communication_manager' role.
+    function isCommunicationManager() {
+        return isSignedIn() && getUserData(request.auth.uid).adminType == "communication_manager";
+    }
+
+    // ======== Collection Rules ========
+
+    // Users Collection:
+    // - Publicly readable.
+    // - Users can update their own data.
+    // - Admins can create users.
+    // - Super Admins have full write access.
     match /users/{userId} {
-      allow read: if isAdmin();
+      allow read: if true;
+      allow create: if isSuperAdmin() || isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow update: if isSuperAdmin() || isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow delete: if isSuperAdmin();
     }
 
-    // Admins can read all dashboard data
+    // Organization Info:
+    // - Publicly readable.
+    // - Writable by Super Admins and Admins.
+    match /organization/info {
+      allow read: if true;
+      allow write: if isSuperAdmin() || isAdmin();
+    }
+
+    // Donations Collection:
+    // - Publicly readable.
+    // - Writable by Super Admins, Donation Managers, and Finance Managers.
     match /donations/{donationId} {
-      allow read: if isAdmin();
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.adminLevel >= 2;
+      allow read: if true;
+      allow write: if isSuperAdmin() || isDonationManager() || isFinanceManager();
     }
-    match /donors/{donorId} {
-      allow read: if isAdmin();
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.adminLevel >= 2;
-    }
+
+    // Campaigns Collection:
+    // - Publicly readable.
+    // - Writable by Super Admins and Campaign Managers.
     match /campaigns/{campaignId} {
-      allow read: if isAdmin();
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.adminLevel >= 2;
+      allow read: if true;
+      allow write: if isSuperAdmin() || isCampaignManager();
     }
-    match /activities/{activityId} {
-      allow read: if isAdmin();
+    
+    // Expenses Collection:
+    // - Publicly readable.
+    // - Writable by Super Admins and Finance Managers.
+    match /expenses/{expenseId} {
+        allow read: if true;
+        allow write: if isSuperAdmin() || isFinanceManager();
     }
 
-    // Organization info - allow admins to read/write
-    match /organization/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
+    // Bills Collection:
+    // - Publicly readable.
+    // - Writable by Super Admins and Finance Managers.
+    match /bills/{billId} {
+        allow read: if true;
+        allow write: if isSuperAdmin() || isFinanceManager();
     }
 
-    // Deny all other writes by default
-    match /{document=**} {
-      allow write: if false;
+    // Receipts Collection:
+    // - Publicly readable.
+    // - Writable by Super Admins, Finance Managers, and Donation Managers.
+    match /receipts/{receiptId} {
+        allow read: if true;
+        allow write: if isSuperAdmin() || isFinanceManager() || isDonationManager();
+    }
+
+    // Volunteers Collection:
+    // - Publicly readable.
+    // - Writable by Super Admins and Volunteer Coordinators.
+    match /volunteers/{volunteerId} {
+        allow read: if true;
+        allow write: if isSuperAdmin() || isVolunteerCoordinator();
+    }
+
+    // Communications Collection:
+    // - Publicly readable.
+    // - Writable by Super Admins and Communication Managers.
+    match /communications/{communicationId} {
+        allow read: if true;
+        allow write: if isSuperAdmin() || isCommunicationManager();
     }
   }
 }
