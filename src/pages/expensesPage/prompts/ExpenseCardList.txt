@@ -1,0 +1,29 @@
+AI Prompt for ExpenseCardList.js
+
+Create a mobile-first, accessible, and visually appealing React component called ExpenseCardList for an expense management system. The component should:
+
+- Accept the following props:
+  - expenses (array of expense objects)
+  - onEdit (function)
+  - onDelete (function)
+  - hasPermission (function)
+- Render a responsive list of cards, one for each expense, showing:
+  - Category (Arabic label)
+  - Status (using StatusBadge)
+  - Description
+  - Amount
+  - Submitted By
+  - Date
+  - Bills (using ExpenseBills)
+  - Action buttons (edit/delete), disabled if no permission
+- Use constants.js for label mappings.
+- Support RTL layout and be visually appealing, with padding, shadow, spacing, and subtle card animation (e.g., fade-in or hover effect).
+- Use PropTypes for type safety and document all props.
+- Be accessible:
+  - Use semantic HTML for sections and buttons
+  - Add aria-labels for actions
+  - Ensure keyboard navigation
+- Support internationalization for all labels and messages.
+- Handle empty or error states gracefully (e.g., show a message if no expenses).
+- Export as a functional component.
+- Follow best practices for maintainability and scalability. 

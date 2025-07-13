@@ -1,0 +1,29 @@
+AI Prompt for FiltersBar.js
+
+Create a highly accessible, responsive, and user-friendly React component called FiltersBar for an expense management system. The component should:
+
+- Accept the following props:
+  - categoryFilter (string)
+  - setCategoryFilter (function)
+  - statusFilter (string)
+  - setStatusFilter (function)
+  - search (string)
+  - setSearch (function)
+  - onAdd (function)
+  - hasPermission (function)
+- Render a responsive bar with:
+  - Category filter dropdown (using constants.js)
+  - Status filter dropdown (using constants.js)
+  - Search input (with clear button)
+  - Add Expense button (disabled if no permission)
+- Stack vertically on mobile, row on desktop.
+- Support RTL layout and be visually appealing.
+- Use PropTypes for type safety and document all props.
+- Be accessible:
+  - Use semantic HTML for form elements
+  - Add aria-labels and roles for screen readers
+  - Ensure full keyboard navigation for all controls
+- Support internationalization for all labels and messages.
+- Handle error states gracefully (e.g., disable controls if data is missing).
+- Export as a functional component.
+- Follow best practices for maintainability and scalability. 

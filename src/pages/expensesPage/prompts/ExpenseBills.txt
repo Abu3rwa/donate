@@ -1,0 +1,19 @@
+AI Prompt for ExpenseBills.js
+
+Create a robust and accessible React component called ExpenseBills for an expense management system. The component should:
+
+- Accept an `expenseId` prop (string or number).
+- Fetch bills for the given expenseId using getBillsForExpense from billsService.
+- Display a list of visually distinct, clickable links for each bill ("مرفق 1", "مرفق 2", ...), opening in a new tab.
+- If no bills exist, show a clear, accessible message: "لا توجد فواتير".
+- Show a loading spinner or skeleton while fetching bills.
+- Gracefully handle and display errors (e.g., "تعذر تحميل الفواتير").
+- Be responsive and fit both card and table layouts.
+- Use PropTypes for type safety and document all props.
+- Be accessible and RTL/LTR compatible:
+  - Use semantic HTML for lists/links
+  - Add aria-labels for links
+  - Ensure keyboard navigation
+- Support internationalization for all messages.
+- Export as a functional component.
+- Follow best practices for maintainability and scalability. 

@@ -1,0 +1,23 @@
+AI Prompt for ExpenseTable.js
+
+Create a robust, accessible, and responsive React component called ExpenseTable for an expense management system. The component should:
+
+- Accept the following props:
+  - expenses (array of expense objects)
+  - onEdit (function)
+  - onDelete (function)
+  - hasPermission (function)
+- Render a responsive table with columns: Category, Description, Amount, Submitted By, Date, Status, Bills, Actions.
+- Use StatusBadge and ExpenseBills components for status and bills columns.
+- Use constants.js for label mappings.
+- Action buttons (edit/delete) should be disabled if the user lacks permission.
+- Support RTL layout and be visually appealing with rounded corners, spacing, and sticky headers for better usability.
+- Table should be horizontally scrollable on small screens (responsive overflow).
+- Use PropTypes for type safety and document all props.
+- Be accessible:
+  - Use semantic table markup (thead, tbody, th, td)
+  - Add aria-labels and roles for screen readers
+  - Ensure keyboard navigation for action buttons
+- Support internationalization for all labels and messages.
+- Export as a functional component.
+- Follow best practices for maintainability and scalability. 

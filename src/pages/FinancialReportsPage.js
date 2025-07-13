@@ -8,7 +8,7 @@ import {
 } from "../services/financialReportsService";
 
 const formatCurrency = (amount) =>
-  new Intl.NumberFormat("ar-SD", {
+  new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "SDG",
     minimumFractionDigits: 0,
@@ -212,12 +212,7 @@ const FinancialReportsPage = () => {
   }, [filters.dateRange, filters.campaign]);
 
   // Date range options
-  const dateRanges = [
-    { value: "today", label: "اليوم" },
-    { value: "week", label: "هذا الأسبوع" },
-    { value: "month", label: "هذا الشهر" },
-    { value: "year", label: "هذا العام" },
-  ];
+  
 
   return (
     <div className="min-h-screen bg-[var(--background-color)] text-[var(--text-primary)] p-4 sm:p-6 lg:p-8" dir="rtl">

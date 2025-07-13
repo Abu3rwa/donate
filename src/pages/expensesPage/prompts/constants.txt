@@ -1,0 +1,17 @@
+constants.js - Design, Functionality, and Content
+
+Purpose:
+- Centralize all static labels and mappings for the expenses module.
+
+Design:
+- Exports:
+  - STATUS_LABELS: status key to Arabic label
+  - CATEGORY_LABELS: category key to Arabic label
+
+Functionality:
+- Used by StatusBadge, FiltersBar, ExpenseTable, ExpenseCardList, etc.
+- Optionally, export arrays for dropdowns if needed.
+
+Content:
+- Export objects for status and category labels.
+- Optionally, export arrays of keys for iteration. 

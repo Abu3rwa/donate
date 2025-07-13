@@ -1,0 +1,22 @@
+AI Prompt for StatusBadge.js
+
+Create a highly reusable and accessible React component called StatusBadge for an expense management system. The component should:
+
+- Accept a `status` prop (string: 'approved', 'pending', 'rejected', or others).
+- Display a visually distinct, rounded pill badge with color coding:
+  - Green for approved
+  - Yellow for pending
+  - Red for rejected
+- Show the status label in Arabic (use a mapping from constants.js), and support internationalization for future expansion.
+- Ensure excellent color contrast for readability (WCAG AA compliant).
+- Be visually clear, bold, and small, with appropriate padding and margin.
+- Support both RTL and LTR layouts seamlessly.
+- Handle unknown statuses gracefully (show the status as-is, with a neutral color).
+- Use PropTypes for type safety and document all props.
+- Be fully responsive and accessible:
+  - Use appropriate ARIA attributes (e.g., role="status" or aria-label)
+  - Keyboard navigable if interactive (otherwise, ensure it is not focusable)
+  - Optionally, add a subtle fade-in animation for status changes
+- Import status label/color mapping from constants.js.
+- Export as a functional component.
+- Follow best practices for maintainability and scalability. 

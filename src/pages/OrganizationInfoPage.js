@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { getOrgInfo, setOrgInfo } from "../services/orgInfoService";
+
 import { uploadLogo } from "../services/fileUploadService";
-import { APP_CONFIG } from "../constants";
+
 import { useOrganizationInfo } from "../contexts/OrganizationInfoContext";
 import { useTheme } from "../contexts/ThemeContext";
 
 const OrganizationInfoPage = () => {
   const { user } = useAuth();
   const isAdmin = user && user.adminType;
-  const { currentTheme, changeTheme, availableThemes } = useTheme();
   const { orgInfo: orgInfoState, saveOrgInfo, loading: orgInfoLoading } = useOrganizationInfo();
   const [orgInfo, setOrgInfoState] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -86,10 +85,7 @@ const OrganizationInfoPage = () => {
     setForm((prev) => ({ ...prev, social: prev.social.filter((_, i) => i !== idx) }));
   };
 
-  const handleLogoChange = (e) => {
-    // For now, just use URL. For file upload, integrate with Firebase Storage.
-    setForm((prev) => ({ ...prev, logo: e.target.value }));
-  };
+  
 
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
@@ -149,150 +145,117 @@ const OrganizationInfoPage = () => {
   if (loading || !orgInfo) return <div className="text-center py-8">جاري التحميل...</div>;
 
   return (
-    <div className="min-h-screen bg-[var(--background-color)] p-2 sm:p-4 lg:p-8 flex flex-col items-center" dir="rtl">
-      {/* Theme Switcher */}
-      <div className="w-full max-w-4xl flex justify-end mb-2">
-        <select
-          className="rounded-lg border px-2 py-1 text-sm bg-[var(--paper-color)] text-[var(--text-primary)]"
-          value={currentTheme}
-          onChange={e => changeTheme(e.target.value)}
-        >
-          {Object.entries(availableThemes).map(([key, t]) => (
-            <option key={key} value={key}>{t.icon} {t.name}</option>
-          ))}
-        </select>
-      </div>
-      <div className="w-full max-w-4xl">
+    <div className="min-h-screen bg-[var(--background-color)] flex flex-col items-center pb-20" dir="rtl">
+      <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 mx-auto">
         {/* Header Section */}
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mb-2">
-            معلومات الجمعية
-          </h1>
-          <p className="text-[var(--text-secondary)]">
-            عرض وتعديل معلومات جمعية السعاتة الدومة الخيرية
-          </p>
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="font-bold text-display-1 text-[var(--text-primary)] mb-2 leading-tight">معلومات الجمعية</h1>
+          <p className="text-heading-2 text-[var(--text-secondary)]">عرض وتعديل معلومات جمعية السعاتة الدومة الخيرية</p>
         </div>
         {/* Main Content Card */}
-        <div className="bg-[var(--paper-color)] rounded-2xl shadow-xl border border-[var(--divider)] overflow-hidden">
+        <div className="bg-[var(--paper-color)] rounded-3xl shadow-2xl border border-[var(--divider)] overflow-hidden backdrop-blur-md">
           {/* Organization Header */}
-          <div className="bg-gradient-to-r from-[var(--primary-color)] to-[var(--secondary-color)] p-4 sm:p-6 text-white">
-            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-              {/* Logo Section */}
-              <div className="relative mb-2 sm:mb-0 flex flex-col items-center">
-                <div
-                  className={`w-20 h-20 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border-4 border-white/20 shadow-lg flex items-center justify-center bg-white/10 ${editMode ? 'cursor-pointer border-dashed border-2 border-[var(--primary-color)]' : ''}`}
-                  onClick={editMode ? triggerFileUpload : undefined}
-                  onDragOver={e => { if (editMode) { e.preventDefault(); e.stopPropagation(); } }}
-                  onDrop={e => {
-                    if (editMode) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                        handleLogoUpload({ target: { files: e.dataTransfer.files } });
-                      }
+          <div className="bg-gradient-to-r from-[var(--primary-color)] to-[var(--secondary-color)] p-6 sm:p-8 flex flex-col lg:flex-row items-center lg:items-start gap-6 lg:gap-8 text-white">
+            {/* Logo Section */}
+            <div className="flex-shrink-0 w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 relative mb-4 lg:mb-0 flex flex-col items-center justify-center">
+              <div
+                className={`w-full h-full rounded-2xl overflow-hidden border-4 border-white/20 shadow-lg flex items-center justify-center bg-white/10 ${editMode ? 'cursor-pointer border-dashed border-2 border-[var(--primary-color)]' : ''}`}
+                onClick={editMode ? triggerFileUpload : undefined}
+                onDragOver={e => { if (editMode) { e.preventDefault(); e.stopPropagation(); } }}
+                onDrop={e => {
+                  if (editMode) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      handleLogoUpload({ target: { files: e.dataTransfer.files } });
                     }
-                  }}
-                  title={editMode ? 'اضغط أو اسحب صورة هنا لتغيير الشعار' : ''}
-                >
-                  <img
-                    src={editMode && form ? form.logo : orgInfo.logo || require("../assets/tempLogo.png")}
-                    alt="شعار الجمعية"
-                    className="w-full h-full object-cover"
-                  />
-                  {editMode && uploadingLogo && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <span className="text-white text-sm">جاري الرفع...</span>
-                    </div>
-                  )}
-                </div>
-                {editMode && (
-                  <>
-                    <button
-                      onClick={triggerFileUpload}
-                      disabled={uploadingLogo}
-                      className="mt-2 bg-[var(--primary-color)] text-white px-4 py-1 rounded-lg text-sm font-medium hover:bg-[var(--primary-dark)] transition-colors w-full"
-                      type="button"
-                    >
-                      {uploadingLogo ? "جاري الرفع..." : "رفع/تغيير الشعار"}
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      className="hidden"
-                    />
-                    <span className="text-xs text-gray-300 mt-1">PNG, JPG, JPEG • حتى 5MB</span>
-                  </>
+                  }
+                }}
+                title={editMode ? 'اضغط أو اسحب صورة هنا لتغيير الشعار' : ''}
+              >
+                <img
+                  src={editMode && form ? form.logo : orgInfo.logo || require("../assets/tempLogo.png")}
+                  alt="شعار الجمعية"
+                  className="w-full h-full object-cover"
+                />
+                {editMode && uploadingLogo && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <span className="text-white text-sm">جاري الرفع...</span>
+                  </div>
                 )}
               </div>
-              {/* Organization Info */}
-              <div className="flex-1 text-center sm:text-right">
-                <div className="space-y-2">
-                  {editMode && form ? (
-                    <input
-                      type="text"
-                      name="name"
-                      value={form.name}
-                      onChange={handleChange}
-                      className="text-xl sm:text-2xl font-bold bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/70 w-full"
-                      placeholder="اسم الجمعية"
-                    />
-                  ) : (
-                    <h2 className="text-xl sm:text-2xl font-bold">{orgInfo.name}</h2>
-                  )}
-                  {editMode && form ? (
-                    <input
-                      type="text"
-                      name="longName"
-                      value={form.longName}
-                      onChange={handleChange}
-                      className="text-base sm:text-lg bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white/90 placeholder-white/50 w-full"
-                      placeholder="الاسم الطويل"
-                    />
-                  ) : (
-                    <p className="text-base sm:text-lg text-white/90">{orgInfo.longName}</p>
-                  )}
-                  {editMode && form ? (
-                    <input
-                      type="text"
-                      name="description"
-                      value={form.description || ""}
-                      onChange={handleChange}
-                      className="text-base sm:text-lg bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white/90 placeholder-white/50 w-full"
-                      placeholder="وصف الجمعية"
-                    />
-                  ) : (
-                    <p className="text-base sm:text-lg text-white/80 mt-1">{orgInfo.description}</p>
-                  )}
-                  {editMode && form ? (
-                    <input
-                      type="text"
-                      name="location"
-                      value={form.location || ""}
-                      onChange={handleChange}
-                      className="text-base sm:text-lg bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white/90 placeholder-white/50 w-full"
-                      placeholder="موقع الجمعية (العنوان)"
-                    />
-                  ) : (
-                    <p className="text-base sm:text-lg text-white/80 mt-1">{orgInfo.location}</p>
-                  )}
-                </div>
-              </div>
+              {editMode && (
+                <>
+                  <button
+                    onClick={triggerFileUpload}
+                    disabled={uploadingLogo}
+                    className="mt-2 bg-[var(--primary-color)] text-white px-4 py-1 rounded-lg text-sm font-medium hover:bg-[var(--primary-dark)] transition-colors w-full"
+                    type="button"
+                  >
+                    {uploadingLogo ? "جاري الرفع..." : "رفع/تغيير الشعار"}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                  <span className="text-xs text-gray-300 mt-1">PNG, JPG, JPEG • حتى 5MB</span>
+                </>
+              )}
             </div>
-            {/* Logo URL Input */}
-            {editMode && (
-              <div className="mt-3">
+            {/* Organization Info */}
+            <div className="flex-1 text-center lg:text-right space-y-2 lg:space-y-4">
+              {editMode && form ? (
                 <input
                   type="text"
-                  name="logo"
-                  value={form.logo}
-                  onChange={handleLogoChange}
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50 text-sm"
-                  placeholder="أو أدخل رابط الشعار"
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  className="text-display-2 font-bold bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/70 w-full"
+                  placeholder="اسم الجمعية"
                 />
-              </div>
-            )}
+              ) : (
+                <h2 className="text-display-2 font-bold">{orgInfo.name}</h2>
+              )}
+              {editMode && form ? (
+                <input
+                  type="text"
+                  name="longName"
+                  value={form.longName}
+                  onChange={handleChange}
+                  className="text-heading-1 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white/90 placeholder-white/50 w-full"
+                  placeholder="الاسم الطويل"
+                />
+              ) : (
+                <p className="text-heading-1 text-white/90">{orgInfo.longName}</p>
+              )}
+              {editMode && form ? (
+                <input
+                  type="text"
+                  name="description"
+                  value={form.description || ""}
+                  onChange={handleChange}
+                  className="text-body bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white/90 placeholder-white/50 w-full"
+                  placeholder="وصف الجمعية"
+                />
+              ) : (
+                <p className="text-body text-white/80 mt-1">{orgInfo.description}</p>
+              )}
+              {editMode && form ? (
+                <input
+                  type="text"
+                  name="location"
+                  value={form.location || ""}
+                  onChange={handleChange}
+                  className="text-body bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white/90 placeholder-white/50 w-full"
+                  placeholder="موقع الجمعية (العنوان)"
+                />
+              ) : (
+                <p className="text-body text-white/80 mt-1">{orgInfo.location}</p>
+              )}
+            </div>
           </div>
           {/* Content Sections */}
           <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
@@ -327,7 +290,6 @@ const OrganizationInfoPage = () => {
                               className="flex-1 input input-bordered text-sm"
                               placeholder="رقم الهاتف"
                               dir="ltr"
-                              style={{fontFamily: 'monospace'}}
                             />
                             <button 
                               onClick={() => handleRemoveContact("phones", i)}
@@ -337,7 +299,7 @@ const OrganizationInfoPage = () => {
                             </button>
                           </div>
                         ) : (
-                          <span dir="ltr" style={{fontFamily: 'monospace'}} className="text-gray-900 dark:text-white font-medium">{phone}</span>
+                          <span dir="ltr" className="text-gray-900 dark:text-white font-medium">{phone}</span>
                         )}
                       </div>
                     ))}
@@ -461,6 +423,150 @@ const OrganizationInfoPage = () => {
                 )}
               </div>
             </div>
+            {/* Recurring Donation Section */}
+            {editMode && form ? (
+              <section className="mt-8">
+                <div className="bg-green-50/80 dark:bg-green-900/30 rounded-2xl p-4 sm:p-6 lg:p-8 border border-green-200 dark:border-green-700 shadow-2xl backdrop-blur-md">
+                  <h4 className="text-heading-1 font-bold text-green-800 dark:text-green-200 mb-6 flex items-center gap-2">
+                    <svg className="w-6 h-6 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    خيارات التبرع المتكرر
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Monthly Recurring */}
+                    <div className="group bg-white/80 dark:bg-green-950/80 rounded-xl p-6 shadow-lg border border-green-100 dark:border-green-800 flex flex-col items-center transition-all duration-200 hover:shadow-2xl hover:scale-[1.03] focus-within:ring-2 focus-within:ring-green-400">
+                      <label className="flex items-center gap-3 cursor-pointer mb-2">
+                        <input
+                          type="checkbox"
+                          name="recurringMonthlyEnabled"
+                          checked={form.recurring?.monthly?.enabled || false}
+                          onChange={e => setForm(prev => ({
+                            ...prev,
+                            recurring: {
+                              ...prev.recurring,
+                              monthly: {
+                                ...prev.recurring?.monthly,
+                                enabled: e.target.checked,
+                                amount: prev.recurring?.monthly?.amount || ''
+                              }
+                            }
+                          }))}
+                          className="form-checkbox h-6 w-6 text-green-600 focus:ring-green-500 border-green-300 rounded transition-all duration-150"
+                          aria-label="تفعيل التبرع الشهري"
+                        />
+                        <span className="text-lg font-semibold text-green-900 dark:text-green-200">تبرع شهري</span>
+                        {form.recurring?.monthly?.amount && (
+                          <span className="ml-2 px-2 py-1 rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-bold">
+                            الحالي: {form.recurring?.monthly?.amount} جنيه
+                          </span>
+                        )}
+                      </label>
+                      <div className="relative w-full">
+                        <input
+                          type="number"
+                          name="recurringMonthlyAmount"
+                          id="recurringMonthlyAmount"
+                          value={form.recurring?.monthly?.amount || ''}
+                          onChange={e => setForm(prev => ({
+                            ...prev,
+                            recurring: {
+                              ...prev.recurring,
+                              monthly: {
+                                ...prev.recurring?.monthly,
+                                amount: e.target.value
+                              }
+                            }
+                          }))}
+                          className="peer input input-bordered w-full text-green-900 dark:text-green-100 bg-green-50/80 dark:bg-green-950/80 border-green-300 dark:border-green-700 focus:ring-green-500 focus:border-green-500 rounded-lg shadow-sm text-lg py-3 px-4 transition-all duration-150 disabled:opacity-60"
+                          placeholder=" "
+                          disabled={!form.recurring?.monthly?.enabled}
+                          aria-label="مبلغ التبرع الشهري"
+                        />
+                        <label htmlFor="recurringMonthlyAmount" className="absolute right-4 top-1/2 -translate-y-1/2 text-green-700 dark:text-green-300 text-base pointer-events-none transition-all duration-150 peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-focus:-top-3 peer-focus:text-xs bg-white/80 dark:bg-green-950/80 px-1 rounded">المبلغ الشهري (جنيه)</label>
+                      </div>
+                    </div>
+                    {/* Yearly Recurring */}
+                    <div className="group bg-white/80 dark:bg-green-950/80 rounded-xl p-6 shadow-lg border border-green-100 dark:border-green-800 flex flex-col items-center transition-all duration-200 hover:shadow-2xl hover:scale-[1.03] focus-within:ring-2 focus-within:ring-green-400">
+                      <label className="flex items-center gap-3 cursor-pointer mb-2">
+                        <input
+                          type="checkbox"
+                          name="recurringYearlyEnabled"
+                          checked={form.recurring?.yearly?.enabled || false}
+                          onChange={e => setForm(prev => ({
+                            ...prev,
+                            recurring: {
+                              ...prev.recurring,
+                              yearly: {
+                                ...prev.recurring?.yearly,
+                                enabled: e.target.checked,
+                                amount: prev.recurring?.yearly?.amount || ''
+                              }
+                            }
+                          }))}
+                          className="form-checkbox h-6 w-6 text-green-600 focus:ring-green-500 border-green-300 rounded transition-all duration-150"
+                          aria-label="تفعيل التبرع السنوي"
+                        />
+                        <span className="text-lg font-semibold text-green-900 dark:text-green-200">تبرع سنوي</span>
+                        {form.recurring?.yearly?.amount && (
+                          <span className="ml-2 px-2 py-1 rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-bold">
+                            الحالي: {form.recurring?.yearly?.amount} جنيه
+                          </span>
+                        )}
+                      </label>
+                      <div className="relative w-full">
+                        <input
+                          type="number"
+                          name="recurringYearlyAmount"
+                          id="recurringYearlyAmount"
+                          value={form.recurring?.yearly?.amount || ''}
+                          onChange={e => setForm(prev => ({
+                            ...prev,
+                            recurring: {
+                              ...prev.recurring,
+                              yearly: {
+                                ...prev.recurring?.yearly,
+                                amount: e.target.value
+                              }
+                            }
+                          }))}
+                          className="peer input input-bordered w-full text-green-900 dark:text-green-100 bg-green-50/80 dark:bg-green-950/80 border-green-300 dark:border-green-700 focus:ring-green-500 focus:border-green-500 rounded-lg shadow-sm text-lg py-3 px-4 transition-all duration-150 disabled:opacity-60"
+                          placeholder=" "
+                          disabled={!form.recurring?.yearly?.enabled}
+                          aria-label="مبلغ التبرع السنوي"
+                        />
+                        <label htmlFor="recurringYearlyAmount" className="absolute right-4 top-1/2 -translate-y-1/2 text-green-700 dark:text-green-300 text-base pointer-events-none transition-all duration-150 peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-focus:-top-3 peer-focus:text-xs bg-white/80 dark:bg-green-950/80 px-1 rounded">المبلغ السنوي (جنيه)</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            ) : (
+              <section className="mt-8">
+                <div className="bg-green-50/80 dark:bg-green-900/30 rounded-2xl p-4 sm:p-6 lg:p-8 border border-green-200 dark:border-green-700 shadow-2xl backdrop-blur-md">
+                  <h4 className="text-heading-1 font-bold text-green-800 dark:text-green-200 mb-6 flex items-center gap-2">
+                    <svg className="w-6 h-6 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    خيارات التبرع المتكرر
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {orgInfo.recurring?.monthly?.enabled && (
+                      
+                      <div className="bg-white/80 dark:bg-green-950/80 rounded-xl p-6 shadow-lg border border-green-100 dark:border-green-800 flex flex-col items-center">
+                        <span className="block text-lg font-semibold text-green-900 dark:text-green-200 mb-2">تبرع شهري</span>
+                        <span className="text-xl text-green-900 dark:text-green-100 font-bold">{orgInfo.recurring?.monthly?.amount} <span className="text-base font-normal">جنيه</span></span>
+                      </div>
+                    )}
+                    {orgInfo.recurring?.yearly?.enabled && (
+                      <div className="bg-white/80 dark:bg-green-950/80 rounded-xl p-6 shadow-lg border border-green-100 dark:border-green-800 flex flex-col items-center">
+                        <span className="block text-lg font-semibold text-green-900 dark:text-green-200 mb-2">تبرع سنوي</span>
+                        <span className="text-xl text-green-900 dark:text-green-100 font-bold">{orgInfo.recurring?.yearly?.amount} <span className="text-base font-normal">جنيه</span></span>
+                      </div>
+                    )}
+                    {!(orgInfo.recurring?.monthly?.enabled || orgInfo.recurring?.yearly?.enabled) && (
+                      <div className="text-gray-500 col-span-full">لا توجد تبرعات متكررة محددة</div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            )}
           </div>
           {/* Action Buttons */}
           <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-t border-gray-200 dark:border-gray-600">

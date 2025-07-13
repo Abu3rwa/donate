@@ -1,0 +1,63 @@
+# Add Expense - Requirements and Considerations
+
+When creating an expense, the following should be considered:
+
+1. **Campaign Association**: Each expense must be linked to a specific campaign. The user should be able to select the campaign when adding an expense.
+2. **Expense Details**: The user provides a name/description for the expense, amount, and other relevant details.
+3. **Campaign Donations Awareness**: When selecting a campaign, the user should be able to see the total amount of donations collected for that campaign. This helps ensure that expenses do not exceed available funds.
+4. **Validation**: The system validates that the expense amount does not exceed the total donations for the selected campaign, checks campaign status and budget limits, validates currency format, and ensures reasonable amounts. The form includes user-friendly error messages and field validation for required fields and correct data types.
+5. **UI/UX**: The add expense form features a modern, clean, and accessible UI. Required fields are clearly marked, errors are shown inline, and the form is responsive and easy to use.
+6. **Data Model**: Expenses store a reference to the campaign they are associated with (e.g., campaignId), as well as all other relevant details.
+7. **Audit Trail**: The system logs who created the expense, tracks changes to expense status, and maintains a complete history of all modifications.
+8. **Receipt Generation**: The system automatically generates expense receipts with unique receipt numbers and sends notifications to relevant parties.
+
+## Fields for Add Expense Form
+- **Campaign** (dropdown/select): The campaign this expense is associated with (campaignId) - validated for existence and active status
+- **Expense Name/Description** (text): A brief description or name for the expense
+- **Amount** (number): The amount of the expense - validated against campaign budget and reasonable limits
+- **Date** (auto-filled): The date the expense was made (default to today, required)
+- **Category** (dropdown/select): The type/category of the expense (e.g., operations, purchase, salary, donation, other)
+- **Status** (dropdown/select): Status of the expense (e.g., pending, approved, rejected) - with role-based permissions
+- **Submitted By** (auto-filled): The user submitting the expense (read-only)
+- **Bills/Receipts** (file upload): Attachments for supporting documents (images or PDFs) - uploaded to secure storage
+- **Total Campaign Donations** (read-only/info): Display the total donations for the selected campaign
+
+## Validation Features
+- **Campaign Validation**: Checks if selected campaign exists and is active
+- **Budget Validation**: Validates expense amount against campaign budget limits
+- **Amount Validation**: Ensures reasonable amounts (not too small or too large)
+- **Currency Format**: Validates proper currency format and positive amounts
+- **File Upload**: Validates file types and handles upload errors
+
+## Audit Trail Features
+- **User Tracking**: Logs who created the expense (user ID and email)
+- **Status History**: Tracks all status changes with timestamps and reasons
+- **Receipt Numbers**: Generates unique receipt numbers for each expense
+- **Creation Timestamp**: Records exact creation time using server timestamp
+
+## Receipt Generation
+- **Automatic Receipt**: Generates HTML receipt with all expense details
+- **Unique Receipt Number**: Creates format EXPYYYYMMXXXX (e.g., EXP2024010001)
+- **Professional Layout**: RTL layout with proper styling and branding
+- **Complete Information**: Includes all expense details, dates, and amounts
+
+## Notification System
+- **Expense Created**: Sends notifications when new expenses are created
+- **Status Changes**: Notifies relevant parties when expense status changes
+- **Budget Alerts**: Warns when expenses approach or exceed budget limits
+- **Receipt Delivery**: Provides receipt copies to relevant stakeholders
+
+## Example Flow
+- User opens the Add Expense form.
+- User selects a campaign from a dropdown list (validated for existence and active status).
+- The form displays the total donations for the selected campaign.
+- User enters expense details (name, amount, etc.) with real-time validation.
+- User uploads any supporting bills/receipts if needed (validated file types).
+- On submit, the system performs comprehensive validation (budget limits, reasonable amounts, etc.).
+- System generates unique receipt number and creates audit trail entry.
+- Expense is saved with complete audit information and receipt generation.
+- Notifications are sent to relevant parties.
+- Receipt is generated and made available for download/printing.
+
+---
+This file is a prompt for further development and discussion about the Add Expense feature in relation to campaigns and their donations, reflecting the latest UI/UX, validation, audit trail, and notification improvements. 

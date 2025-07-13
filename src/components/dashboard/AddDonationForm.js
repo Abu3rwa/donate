@@ -14,6 +14,9 @@ import {
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import toast from "react-hot-toast";
+import { getAllUsers } from "../../services/userService";
+import { useRef } from "react";
+import { getOrgInfo } from "../../services/orgInfoService";
 
 // --- Validation Schema ---
 const donationSchema = yup
@@ -29,7 +32,10 @@ const donationSchema = yup
       .positive("يجب أن يكون المبلغ أكبر من صفر")
       .required("المبلغ مطلوب"),
     campaignId: yup.string().required("الرجاء اختيار حملة"),
-    status: yup.string().oneOf(["pending", "completed", "failed"]).required("الرجاء اختيار حالة التبرع"),
+    status: yup
+      .string()
+      .oneOf(["pending", "completed", "failed"])
+      .required("الرجاء اختيار حالة التبرع"),
     isAnonymous: yup.boolean().notRequired(),
     donationType: yup.string().oneOf(["one-time", "recurring"]).required(),
     recurringInterval: yup.string().when("donationType", {
@@ -46,7 +52,15 @@ const donationSchema = yup
 
 export default function AddDonationForm({ onCancel, onSubmit }) {
   const [campaigns, setCampaigns] = useState([]);
+  const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [donorQuery, setDonorQuery] = useState("");
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [selectedDonor, setSelectedDonor] = useState(null);
+  const [customDonor, setCustomDonor] = useState("");
+  const [amountPrefilled, setAmountPrefilled] = useState(false);
+  const donorInputRef = useRef();
+  const [orgInfo, setOrgInfo] = useState(null);
 
   const {
     register,
@@ -54,11 +68,12 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
     reset,
     formState: { errors },
     watch,
+    setValue,
   } = useForm({
     resolver: yupResolver(donationSchema),
     defaultValues: {
       donationType: "one-time",
-      status: "pending", // Default to pending instead of completed
+      status: "completed", // Default to completed
     },
   });
 
@@ -80,7 +95,89 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
       }
     };
     fetchCampaigns();
+
+    // Fetch users for donor dropdown
+    const fetchUsers = async () => {
+      try {
+        const usersList = await getAllUsers();
+        setUsers(usersList);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
+    fetchUsers();
+
+    // Fetch org info for default recurring amount
+    const fetchOrgInfo = async () => {
+      try {
+        const info = await getOrgInfo();
+        setOrgInfo(info);
+      } catch (error) {
+        console.error("Error fetching org info:", error);
+      }
+    };
+    fetchOrgInfo();
   }, []);
+
+  // Filter users as the donorQuery changes
+  useEffect(() => {
+    if (!donorQuery) {
+      setFilteredUsers([]);
+      setSelectedDonor(null);
+      return;
+    }
+    const q = donorQuery.toLowerCase();
+    const matches = users.filter(
+      (u) =>
+        (u.displayName && u.displayName.toLowerCase().includes(q)) ||
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.phone && u.phone.toLowerCase().includes(q))
+    );
+    setFilteredUsers(matches);
+    // If exact match, select
+    if (
+      matches.length === 1 &&
+      (matches[0].displayName?.toLowerCase() === q ||
+        matches[0].name?.toLowerCase() === q ||
+        matches[0].email?.toLowerCase() === q ||
+        matches[0].phone?.toLowerCase() === q)
+    ) {
+      setSelectedDonor(matches[0]);
+    } else {
+      setSelectedDonor(null);
+    }
+  }, [donorQuery, users]);
+
+  // When donationType is monthly/yearly, set campaign to 'general' and prefill amount from orgInfo if available
+  useEffect(() => {
+    if (donationType === "monthly" || donationType === "yearly") {
+      setValue("campaignId", "general");
+      // Prefill amount from orgInfo if available
+      if (orgInfo && orgInfo.recurring && orgInfo.recurring[donationType]) {
+        setValue("amount", orgInfo.recurring[donationType].amount);
+        setAmountPrefilled(true);
+      }
+    } else if (donationType === "one-time") {
+      // Clear auto-filled values for one-time
+      setValue("amount", "");
+      setValue("campaignId", "");
+      setAmountPrefilled(false);
+    }
+  }, [donationType, orgInfo, setValue]);
+
+  // Prefill amount if donor has recurring settings and donationType is monthly/yearly
+  useEffect(() => {
+    if (!selectedDonor) return;
+    let recurring = selectedDonor.recurring || {};
+    let type = donationType;
+    if ((type === "monthly" || type === "yearly") && recurring[type]?.enabled) {
+      setValue("amount", recurring[type].amount);
+      setAmountPrefilled(true);
+    } else {
+      setAmountPrefilled(false);
+    }
+  }, [selectedDonor, donationType, setValue]);
 
   const handleFormSubmit = async (data) => {
     setIsLoading(true);
@@ -125,7 +222,7 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
           });
         }
       }
-      
+
       toast.success("تمت إضافة التبرع بنجاح!", { id: toastId });
       reset();
     } catch (err) {
@@ -140,9 +237,39 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
     <div className="bg-[var(--background-color)] p-4 sm:p-8" dir="rtl">
       <form
         onSubmit={handleSubmit(handleFormSubmit)}
-        className="bg-[var(--background-color)] p-6 rounded-lg shadow-md max-w-2xl mx-auto space-y-6"
+        className="bg-[var(--background-color)] p-6 rounded-lg shadow-md max-w-2xl mx-auto space-y-6 relative"
         noValidate
       >
+        {/* Loading overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center z-20 rounded-lg">
+            <div className="flex flex-col items-center">
+              <svg
+                className="animate-spin h-10 w-10 text-white mb-4"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v8z"
+                ></path>
+              </svg>
+              <span className="text-white text-lg font-semibold">
+                جاري إضافة التبرع...
+              </span>
+            </div>
+          </div>
+        )}
         <div className="text-center">
           <h2 className="text-2xl font-bold text-[var(--text-color)]">
             إضافة تبرع جديد
@@ -178,7 +305,7 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
             <label
               className={`w-1/2 text-center cursor-pointer px-4 py-2 text-sm font-semibold rounded-full transition-colors focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2
                 ${
-                  donationType === "recurring"
+                  donationType === "monthly"
                     ? "bg-accent text-[var(--text-color)] shadow"
                     : "bg-[var(--background-color)] text-[var(--text-color)] border border-transparent hover:bg-[var(--background-color)]"
                 }
@@ -187,11 +314,29 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
             >
               <input
                 type="radio"
-                value="recurring"
+                value="monthly"
                 {...register("donationType")}
                 className="sr-only"
               />
-              متكرر
+              شهري
+            </label>
+            <label
+              className={`w-1/2 text-center cursor-pointer px-4 py-2 text-sm font-semibold rounded-full transition-colors focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2
+                ${
+                  donationType === "yearly"
+                    ? "bg-accent text-[var(--text-color)] shadow"
+                    : "bg-[var(--background-color)] text-[var(--text-color)] border border-transparent hover:bg-[var(--background-color)]"
+                }
+              `}
+              tabIndex={0}
+            >
+              <input
+                type="radio"
+                value="yearly"
+                {...register("donationType")}
+                className="sr-only"
+              />
+              سنوي
             </label>
           </div>
         </div>
@@ -222,8 +367,8 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
         )}
         {/* Form Fields */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Donor Name */}
-          <div>
+          {/* Donor Autocomplete */}
+          <div className="relative">
             <label
               htmlFor="donorName"
               className="block text-sm font-medium text-[var(--text-color)] mb-1"
@@ -233,9 +378,69 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
             <input
               id="donorName"
               type="text"
-              {...register("donorName")}
+              ref={donorInputRef}
+              value={donorQuery}
+              onChange={(e) => {
+                setDonorQuery(e.target.value);
+                setCustomDonor("");
+                setSelectedDonor(null);
+                setValue("donorName", e.target.value);
+              }}
+              placeholder="ابحث بالاسم أو البريد أو الهاتف..."
               className="input-field bg-[var(--background-color)] text-[var(--text-color)]"
+              autoComplete="off"
+              disabled={donationType === "monthly" || donationType === "yearly"}
             />
+            {/* Dropdown of matches */}
+            {filteredUsers.length > 0 && (
+              <ul className="absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow max-h-40 overflow-y-auto mt-1">
+                {filteredUsers.map((user) => (
+                  <li
+                    key={user.id}
+                    className="px-4 py-2 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-700 text-[var(--text-color)]"
+                    onClick={() => {
+                      setDonorQuery(
+                        user.displayName ||
+                          user.name ||
+                          user.email ||
+                          user.phone
+                      );
+                      setSelectedDonor(user);
+                      setValue(
+                        "donorName",
+                        user.displayName ||
+                          user.name ||
+                          user.email ||
+                          user.phone
+                      );
+                      setFilteredUsers([]);
+                      if (user.phone) {
+                        setValue("donorPhone", user.phone);
+                      }
+                    }}
+                  >
+                    {user.displayName || user.name || user.email || user.phone}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {/* Manual entry if no match */}
+            {filteredUsers.length === 0 && donorQuery && !selectedDonor && (
+              <input
+                type="text"
+                placeholder="أدخل اسم المتبرع يدويًا"
+                className="input-field bg-[var(--background-color)] text-[var(--text-color)] mt-2"
+                value={customDonor}
+                onChange={(e) => {
+                  setCustomDonor(e.target.value);
+                  setValue("donorName", e.target.value);
+                }}
+                required
+                disabled={
+                  donationType === "monthly" || donationType === "yearly"
+                }
+              />
+            )}
             {errors.donorName && (
               <p className="error-message">{errors.donorName.message}</p>
             )}
@@ -255,6 +460,7 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
               className="input-field bg-[var(--background-color)] text-[var(--text-color)]"
               pattern="[0-9]{8,15}"
               inputMode="tel"
+              disabled={donationType === "monthly" || donationType === "yearly"}
             />
             {errors.donorPhone && (
               <p className="error-message">{errors.donorPhone.message}</p>
@@ -274,6 +480,12 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
               step="0.01"
               {...register("amount")}
               className="input-field bg-[var(--background-color)] text-[var(--text-color)]"
+              value={amountPrefilled ? watch("amount") : undefined}
+              onChange={(e) => {
+                setAmountPrefilled(false);
+                setValue("amount", e.target.value);
+              }}
+              disabled={donationType === "monthly" || donationType === "yearly"}
             />
             {errors.amount && (
               <p className="error-message">{errors.amount.message}</p>
@@ -292,19 +504,14 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
                 id="campaignId"
                 {...register("campaignId")}
                 className="input-field text-center block w-full px-4 py-2 pr-10 rounded-lg border border-primary-green focus:border-primary-green focus:ring focus:ring-primary-green/30 focus:ring-opacity-50 bg-[var(--background-color)] dark:bg-[var(--background-color)] text-[var(--text-color)] appearance-none transition font-semibold shadow-sm"
+                disabled={
+                  donationType === "monthly" || donationType === "yearly"
+                }
               >
-                <option
-                  value=""
-                  className="text-gray-400 bg-[var(--background-color)] dark:bg-[var(--background-color)]"
-                >
-                  اختر حملة...
-                </option>
+                <option value="">اختر حملة...</option>
+                <option value="general">عام</option>
                 {campaigns.map((c) => (
-                  <option
-                    key={c.id}
-                    value={c.id}
-                    className="text-[var(--text-color)] bg-[var(--background-color)] font-semibold"
-                  >
+                  <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
@@ -331,26 +538,6 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
             )}
           </div>
           {/* Status */}
-          <div>
-            <label
-              htmlFor="status"
-              className="block text-sm font-medium text-[var(--text-color)] mb-1"
-            >
-              حالة التبرع
-            </label>
-            <select
-              id="status"
-              {...register("status")}
-              className="input-field bg-[var(--background-color)] text-[var(--text-color)]"
-            >
-              <option value="pending">قيد الانتظار</option>
-              <option value="completed">تم الإنجاز</option>
-              <option value="failed">فشل التبرع</option>
-            </select>
-            {errors.status && (
-              <p className="error-message">{errors.status.message}</p>
-            )}
-          </div>
         </div>
         {/* Notes */}
         <div>

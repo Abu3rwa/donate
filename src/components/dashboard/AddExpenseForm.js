@@ -1,158 +1,159 @@
-import React, { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import { getAllCampaigns } from '../../services/compaignService';
+import { fetchDonations } from '../../services/donationsService';
 
-const categories = [
-  { value: "operations", label: "تشغيلية" },
-  { value: "purchase", label: "شراء" },
-  { value: "salary", label: "راتب" },
-  { value: "donation", label: "تبرع" },
-  { value: "other", label: "أخرى" },
-];
+const CATEGORY_LABELS = {
+  operations: 'تشغيلية',
+  purchase: 'شراء',
+  salary: 'راتب',
+  donation: 'تبرع',
+  other: 'أخرى',
+};
 
-const expenseSchema = yup.object({
-  amount: yup
-    .number()
-    .typeError("الرجاء إدخال مبلغ صحيح")
-    .positive("يجب أن يكون المبلغ أكبر من صفر")
-    .required("المبلغ مطلوب"),
-  category: yup.string().required("التصنيف مطلوب"),
-  description: yup.string().required("الوصف مطلوب"),
-  date: yup.string().required("التاريخ مطلوب"),
-  files: yup.mixed(),
-  submittedBy: yup.string().required("اسم المقدم مطلوب"),
-});
-
-export default function AddExpenseForm({ onCancel, onSubmit, initialData, user }) {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: yupResolver(expenseSchema),
-    defaultValues: initialData || {},
+const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
+  const [campaigns, setCampaigns] = useState([]);
+  const [selectedCampaign, setSelectedCampaign] = useState(initialData?.campaignId || '');
+  const [totalDonations, setTotalDonations] = useState(0);
+  const [formData, setFormData] = useState({
+    description: initialData?.description || '',
+    amount: initialData?.amount || '',
+    category: initialData?.category || 'operations',
+    submittedBy: user?.displayName || 'غير معروف',
   });
 
   useEffect(() => {
-    if (initialData) {
-      reset(initialData);
-    }
-  }, [initialData, reset]);
+    const fetchCampaigns = async () => {
+      try {
+        const data = await getAllCampaigns();
+        setCampaigns(data);
+      } catch (error) {
+        console.error("Error fetching campaigns:", error);
+      }
+    };
+    fetchCampaigns();
+  }, []);
 
-  const submitHandler = async (data) => {
-    // Convert file input to array of files
-    const files = data.files && data.files.length ? Array.from(data.files) : [];
-    await onSubmit({
-      ...data,
-      files,
-      submittedBy: user?.displayName || user?.email,
-      submittedById: user?.uid,
-      submittedByRole: user?.role,
-      submittedByAdminType: user?.adminType,
-    });
-    reset();
-    if (onCancel) onCancel();
+  useEffect(() => {
+    const fetchCampaignDonations = async () => {
+      if (selectedCampaign) {
+        try {
+          const { donations } = await fetchDonations({ campaign: selectedCampaign });
+          const total = donations.reduce((acc, curr) => acc + curr.amount, 0);
+          setTotalDonations(total);
+        } catch (error) {
+          console.error("Error fetching donations:", error);
+          setTotalDonations(0);
+        }
+      }
+    };
+    fetchCampaignDonations();
+  }, [selectedCampaign]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCampaignChange = (e) => {
+    setSelectedCampaign(e.target.value);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (formData.amount > totalDonations) {
+      alert('Expense amount cannot exceed total donations for the campaign.');
+      return;
+    }
+    onSubmit({ ...formData, campaignId: selectedCampaign });
   };
 
   return (
-    <form onSubmit={handleSubmit(submitHandler)} className="space-y-6" dir="rtl" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">المبلغ</label>
-        <input
-          type="number"
-          step="0.01"
-          {...register("amount")}
-          className="input-field bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-        />
-        {errors.amount && <p className="error-message">{errors.amount.message}</p>}
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">التصنيف</label>
-        <select {...register("category")} className="input-field bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-          <option value="">اختر التصنيف</option>
-          {categories.map((cat) => (
-            <option key={cat.value} value={cat.value}>{cat.label}</option>
+        <label htmlFor="campaign" className="block text-sm font-medium text-gray-700 dark:text-gray-300">الحملة</label>
+        <select
+          id="campaign"
+          name="campaign"
+          value={selectedCampaign}
+          onChange={handleCampaignChange}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+        >
+          <option value="">اختر حملة</option>
+          {campaigns.map((campaign) => (
+            <option key={campaign.id} value={campaign.id}>
+              {campaign.title}
+            </option>
           ))}
         </select>
-        {errors.category && <p className="error-message">{errors.category.message}</p>}
+        {selectedCampaign && (
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            إجمالي التبرعات لهذه الحملة: {totalDonations} ج.س
+          </p>
+        )}
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">الوصف</label>
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">الوصف</label>
         <textarea
-          rows={3}
-          {...register("description")}
-          className="input-field bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          id="description"
+          name="description"
+          rows="3"
+          value={formData.description}
+          onChange={handleChange}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         ></textarea>
-        {errors.description && <p className="error-message">{errors.description.message}</p>}
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">التاريخ</label>
+        <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300">المبلغ</label>
         <input
-          type="date"
-          {...register("date")}
-          className="input-field bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          type="number"
+          id="amount"
+          name="amount"
+          value={formData.amount}
+          onChange={handleChange}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
-        {errors.date && <p className="error-message">{errors.date.message}</p>}
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">المرفقات (فواتير/إيصالات)</label>
-        <input
-          type="file"
-          multiple
-          accept="image/*,application/pdf"
-          {...register("files")}
-          className="input-field bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-        />
-        {errors.files && <p className="error-message">{errors.files.message}</p>}
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">اسم المقدم</label>
-        <input
-          type="text"
-          value={user?.displayName || user?.email || "-"}
-          className="input-field bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-not-allowed"
-          readOnly
-        />
-      </div>
-      <div className="flex gap-2 mt-6">
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex-1 py-2 rounded bg-primary-600 text-white font-semibold hover:bg-primary-700 transition disabled:opacity-50"
+        <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300">التصنيف</label>
+        <select
+          id="category"
+          name="category"
+          value={formData.category}
+          onChange={handleChange}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         >
-          {initialData ? "تعديل المصروف" : "إضافة مصروف"}
-        </button>
+          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex justify-end gap-4">
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold hover:bg-gray-400 dark:hover:bg-gray-600 transition"
+          className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
         >
           إلغاء
         </button>
+        <button
+          type="submit"
+          className="rounded-md border border-transparent bg-primary-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+        >
+          {initialData ? 'حفظ التعديلات' : 'إضافة مصروف'}
+        </button>
       </div>
-      <style>{`
-        .input-field {
-          display: block;
-          width: 100%;
-          padding: 0.75rem;
-          border-radius: 0.5rem;
-          border: 1px solid #BDC3C7;
-          transition: border-color 0.2s;
-        }
-        .input-field:focus {
-          outline: none;
-          border-color: #4A90E2;
-          box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
-        }
-        .error-message {
-          color: #CE1126;
-          font-size: 0.875rem;
-          margin-top: 0.25rem;
-        }
-      `}</style>
     </form>
   );
-} 
+};
+
+AddExpenseForm.propTypes = {
+  initialData: PropTypes.object,
+  onSubmit: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  user: PropTypes.object,
+};
+
+export default AddExpenseForm;

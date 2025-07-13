@@ -9,6 +9,7 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  getDoc,
   serverTimestamp,
   onSnapshot,
   limit,
@@ -19,10 +20,12 @@ import {
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import toast from "react-hot-toast";
+import { getOrgInfo } from "./orgInfoService";
+import { deleteFile } from "./fileUploadService";
 
 // Utility functions
 const formatCurrency = (amount) =>
-  new Intl.NumberFormat("ar-SD", {
+  new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "SDG",
     minimumFractionDigits: 0,
@@ -30,14 +33,45 @@ const formatCurrency = (amount) =>
 
 const formatDate = (timestamp) => {
   if (!timestamp) return "";
-  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  return new Intl.DateTimeFormat("ar-SD", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+
+  let date;
+  try {
+    if (timestamp.toDate && typeof timestamp.toDate === "function") {
+      // Firestore timestamp
+      date = timestamp.toDate();
+    } else if (timestamp instanceof Date) {
+      // Regular Date object
+      date = timestamp;
+    } else if (typeof timestamp === "string" || typeof timestamp === "number") {
+      // String or number timestamp
+      date = new Date(timestamp);
+    } else {
+      // Fallback to current date
+      date = new Date();
+    }
+
+    // Validate the date
+    if (isNaN(date.getTime())) {
+      return new Intl.DateTimeFormat("ar-EG", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).format(new Date());
+    }
+
+    return new Intl.DateTimeFormat("ar-EG", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(date);
+  } catch (error) {
+    console.error("Error formatting date:", error, timestamp);
+    return new Intl.DateTimeFormat("ar-EG", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(new Date());
+  }
 };
 
 // 1. Fetch all donations with pagination and filters
@@ -67,10 +101,14 @@ export const fetchDonations = async (filters = {}) => {
     if (dateRange !== "all") {
       const now = new Date();
       let startDate;
-      
+
       switch (dateRange) {
         case "today":
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          startDate = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate()
+          );
           break;
         case "week":
           startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -123,9 +161,32 @@ export const addDonation = async (donationData) => {
     const auth = getAuth();
     const user = auth.currentUser;
 
+    // Generate receipt number
+    const currentYear = new Date().getFullYear();
+    const currentMonth = String(new Date().getMonth() + 1).padStart(2, "0");
+
+    // Get count of donations for this year/month
+    const yearQuery = query(
+      collection(db, "donations"),
+      where("createdAt", ">=", Timestamp.fromDate(new Date(currentYear, 0, 1))),
+      where(
+        "createdAt",
+        "<",
+        Timestamp.fromDate(new Date(currentYear + 1, 0, 1))
+      )
+    );
+    const yearSnapshot = await getDocs(yearQuery);
+    const donationCount = yearSnapshot.size + 1;
+
+    // Format: YYYYMMXXXX (e.g., 2024010001)
+    const receiptNumber = `${currentYear}${currentMonth}${String(
+      donationCount
+    ).padStart(4, "0")}`;
+
     // Use the status from the form, default to 'pending' if not provided
     const donation = {
       ...donationData,
+      receiptNumber,
       createdAt: serverTimestamp(),
       createdBy: user?.uid || "admin_manual_entry",
       status: donationData.status || "pending",
@@ -135,8 +196,8 @@ export const addDonation = async (donationData) => {
 
     const docRef = await addDoc(collection(db, "donations"), donation);
 
-    // Update campaign raised amount if campaign is specified
-    if (donation.campaign) {
+    // Update campaign raised amount if campaign is specified and not 'general'
+    if (donation.campaign && donation.campaign !== "general") {
       const campaignRef = doc(db, "campaigns", donation.campaign);
       try {
         await updateDoc(campaignRef, {
@@ -150,8 +211,32 @@ export const addDonation = async (donationData) => {
       }
     }
 
+    // Format the donation data for display
+    const currentDate = new Date();
+    const formattedDonation = {
+      id: docRef.id,
+      amount: donation.amount,
+      donorName: donation.donorName,
+      donorPhone: donation.donorPhone,
+      donorEmail: donation.donorEmail,
+      campaign: donation.campaign,
+      status: donation.status,
+      currency: donation.currency,
+      paymentMethod: donation.paymentMethod,
+      notes: donation.notes,
+      isAnonymous: donation.isAnonymous,
+      recurringDonation: donation.recurringDonation,
+      recurringInterval: donation.recurringInterval,
+      receiptNumber: donation.receiptNumber,
+      receiptUrl: donation.receiptUrl,
+      createdBy: donation.createdBy,
+      createdAt: currentDate, // Use current date for immediate display
+      formattedAmount: formatCurrency(donation.amount || 0),
+      formattedDate: formatDate(currentDate),
+    };
+
     toast.success("تمت إضافة التبرع بنجاح!");
-    return { id: docRef.id, ...donation };
+    return formattedDonation;
   } catch (error) {
     console.error("Error adding donation:", error);
     toast.error("حدث خطأ أثناء إضافة التبرع");
@@ -178,7 +263,28 @@ export const updateDonation = async (donationId, updates) => {
 // 4. Delete donation
 export const deleteDonation = async (donationId) => {
   try {
+    // First, get the donation data to check if it has a receipt
     const donationRef = doc(db, "donations", donationId);
+    const donationDoc = await getDoc(donationRef);
+
+    if (!donationDoc.exists()) {
+      throw new Error("التبرع غير موجود");
+    }
+
+    const donationData = donationDoc.data();
+
+    // Delete the receipt file from Firebase Storage if it exists
+    if (donationData.receiptUrl) {
+      try {
+        await deleteFile(donationData.receiptUrl);
+        console.log("Receipt file deleted successfully");
+      } catch (storageError) {
+        console.error("Error deleting receipt file:", storageError);
+        // Don't throw error for storage deletion as it's not critical
+      }
+    }
+
+    // Delete the donation document
     await deleteDoc(donationRef);
     toast.success("تم حذف التبرع بنجاح!");
   } catch (error) {
@@ -199,10 +305,14 @@ export const getDonationStats = async (filters = {}) => {
     if (dateRange !== "all") {
       const now = new Date();
       let startDate;
-      
+
       switch (dateRange) {
         case "today":
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          startDate = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate()
+          );
           break;
         case "week":
           startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -232,9 +342,15 @@ export const getDonationStats = async (filters = {}) => {
 
     const totalAmount = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
     const totalDonations = donations.length;
-    const completedDonations = donations.filter((d) => d.status === "completed").length;
-    const pendingDonations = donations.filter((d) => d.status === "pending").length;
-    const uniqueDonors = new Set(donations.map((d) => d.donorEmail || d.donorPhone)).size;
+    const completedDonations = donations.filter(
+      (d) => d.status === "completed"
+    ).length;
+    const pendingDonations = donations.filter(
+      (d) => d.status === "pending"
+    ).length;
+    const uniqueDonors = new Set(
+      donations.map((d) => d.donorEmail || d.donorPhone)
+    ).size;
 
     return {
       totalAmount,
@@ -296,7 +412,7 @@ export const getDonationById = async (donationId) => {
   try {
     const donationRef = doc(db, "donations", donationId);
     const snapshot = await getDocs(donationRef);
-    
+
     if (!snapshot.exists()) {
       throw new Error("التبرع غير موجود");
     }
@@ -318,7 +434,11 @@ export const getDonationById = async (donationId) => {
 // 8. Search donations
 export const searchDonations = async (searchTerm, filters = {}) => {
   try {
-    const { status = "all", campaign = "all", limit: limitCount = 50 } = filters;
+    const {
+      status = "all",
+      campaign = "all",
+      limit: limitCount = 50,
+    } = filters;
 
     let q = query(collection(db, "donations"), orderBy("createdAt", "desc"));
 
@@ -344,11 +464,12 @@ export const searchDonations = async (searchTerm, filters = {}) => {
     // Client-side search filtering
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      donations = donations.filter((donation) =>
-        donation.donorName?.toLowerCase().includes(term) ||
-        donation.donorPhone?.includes(term) ||
-        donation.donorEmail?.toLowerCase().includes(term) ||
-        donation.notes?.toLowerCase().includes(term)
+      donations = donations.filter(
+        (donation) =>
+          donation.donorName?.toLowerCase().includes(term) ||
+          donation.donorPhone?.includes(term) ||
+          donation.donorEmail?.toLowerCase().includes(term) ||
+          donation.notes?.toLowerCase().includes(term)
       );
     }
 
@@ -363,7 +484,8 @@ export const searchDonations = async (searchTerm, filters = {}) => {
 export const exportDonations = async (filters = {}) => {
   try {
     const { donations } = await fetchDonations({ ...filters, limit: 1000 });
-    
+    const orgInfo = await getOrgInfo();
+
     const csvHeaders = [
       "ID",
       "اسم المتبرع",
@@ -376,6 +498,10 @@ export const exportDonations = async (filters = {}) => {
       "نوع التبرع",
       "تاريخ الإنشاء",
       "ملاحظات",
+      "اسم المنظمة",
+      "اسم المنظمة الكامل",
+      "هاتف المنظمة",
+      "بريد المنظمة",
     ];
 
     const csvData = donations.map((donation) => [
@@ -390,6 +516,10 @@ export const exportDonations = async (filters = {}) => {
       donation.recurringDonation ? "متكرر" : "مرة واحدة",
       donation.formattedDate || "",
       donation.notes || "",
+      orgInfo?.name || "",
+      orgInfo?.longName || "",
+      (orgInfo?.contacts?.phones && orgInfo.contacts.phones[0]) || "",
+      (orgInfo?.contacts?.emails && orgInfo.contacts.emails[0]) || "",
     ]);
 
     const csvContent = [csvHeaders, ...csvData]
@@ -400,7 +530,10 @@ export const exportDonations = async (filters = {}) => {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `donations_${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `donations_${new Date().toISOString().split("T")[0]}.csv`
+    );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -412,4 +545,27 @@ export const exportDonations = async (filters = {}) => {
     toast.error("حدث خطأ أثناء تصدير التبرعات");
     throw error;
   }
-}; 
+};
+
+// Get all donations for a specific campaign
+export const getDonationsForCampaign = async (campaignId) => {
+  try {
+    if (!campaignId) throw new Error("campaignId is required");
+    const q = query(
+      collection(db, "donations"),
+      where("campaign", "==", campaignId),
+      orderBy("createdAt", "desc")
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+      formattedAmount: formatCurrency(doc.data().amount || 0),
+      formattedDate: formatDate(doc.data().createdAt),
+    }));
+  } catch (error) {
+    console.error("Error fetching donations for campaign:", error);
+    throw new Error("فشل في تحميل تبرعات الحملة");
+  }
+};

@@ -44,7 +44,7 @@ export const ADMIN_PERMISSIONS = {
   [ADMIN_TYPES.SUPER_ADMIN]: {
     level: ADMIN_LEVELS.LEVEL_5,
     permissions: ["all"],
-    name: "مدير عام",
+    name: "المدير عام",
     description: "صلاحيات كاملة على النظام",
   },
   [ADMIN_TYPES.ADMIN]: {
@@ -143,10 +143,13 @@ export const AuthProvider = ({ children }) => {
                     ...firebaseUser,
                     ...userData,
                   };
-                  console.log('AuthContext merged user:', mergedUser);
+                  console.log("AuthContext merged user:", mergedUser);
                   setUser(mergedUser);
                 } else {
-                  console.log('AuthContext firebaseUser (no Firestore doc):', firebaseUser);
+                  console.log(
+                    "AuthContext firebaseUser (no Firestore doc):",
+                    firebaseUser
+                  );
                   setUser(firebaseUser);
                 }
               } catch (error) {
@@ -179,8 +182,6 @@ export const AuthProvider = ({ children }) => {
 
   // Helper functions for admin checks
   const isAdmin = (user) => {
-    
-
     return (
       user &&
       user.adminType &&

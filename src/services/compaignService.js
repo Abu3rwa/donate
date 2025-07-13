@@ -8,14 +8,42 @@ import {
   updateDoc,
   deleteDoc,
   query,
-  orderBy
+  orderBy,
+  where,
 } from "firebase/firestore";
 
 const campaignsRef = collection(db, "campaigns");
 
 // Get all campaigns
-export const getAllCampaigns = async () => {
-  const q = query(campaignsRef, orderBy("createdAt", "desc"));
+export const getAllCampaigns = async ({ dateRange = "all" } = {}) => {
+  let q = query(campaignsRef, orderBy("createdAt", "desc"));
+
+  if (dateRange && dateRange !== "all") {
+    const now = new Date();
+    let startDate;
+
+    switch (dateRange) {
+      case "today":
+        startDate = new Date(now.setHours(0, 0, 0, 0));
+        break;
+      case "week":
+        startDate = new Date(now.setDate(now.getDate() - 7));
+        break;
+      case "month":
+        startDate = new Date(now.setMonth(now.getMonth() - 1));
+        break;
+      case "year":
+        startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+        break;
+      default:
+        startDate = null;
+    }
+
+    if (startDate) {
+      q = query(q, where("createdAt", ">=", startDate.toISOString()));
+    }
+  }
+
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };

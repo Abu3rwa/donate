@@ -99,7 +99,7 @@ module.exports = {
       },
       fontFamily: {
         arabic: ["Noto Sans Arabic", "Arial", "sans-serif"],
-        sans: ["Inter", "Noto Sans Arabic", "Arial", "sans-serif"],
+        sans: ["Tajawal", "Cairo", "Tahoma", "Arial", "sans-serif"],
       },
       animation: {
         "fade-in": "fadeIn 0.5s ease-in-out",
@@ -127,6 +127,14 @@ module.exports = {
         "gradient-trust": "linear-gradient(135deg, #16a34a 0%, #0ea5e9 100%)",
         "gradient-hope": "linear-gradient(135deg, #4ade80 0%, #22c55e 100%)",
       },
+    },
+    screens: {
+      xs: "475px",
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
     },
   },
   plugins: [require("@tailwindcss/forms"), require("@tailwindcss/typography")],
