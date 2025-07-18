@@ -13,7 +13,7 @@ import {
 } from "../../services/donationsService";
 import { getAllCampaigns } from "../../services/compaignService";
 
-import { useOrganizationInfo } from "../../contexts/OrganizationInfoContext";
+import { getOrgInfo } from "../../services/orgInfoService";
 
 import { exportToImage } from "./export/exportToImage";
 import { generateExportHtml } from "./export/generateExportHtml";
@@ -25,7 +25,14 @@ const DonationsPage = () => {
   const { showSuccess, showError } = useNotification();
   const [, setSearchParams] = useSearchParams();
   const exportRef = useRef(null);
-  const { orgInfo } = useOrganizationInfo();
+  const [orgInfo, setOrgInfo] = useState({});
+  useEffect(() => {
+    const fetchOrg = async () => {
+      const info = await getOrgInfo();
+      setOrgInfo(info || {});
+    };
+    fetchOrg();
+  }, []);
   // State management
   const [donations, setDonations] = useState([]);
   const [campaigns, setCampaigns] = useState([]);

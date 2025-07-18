@@ -5,14 +5,7 @@ import { getDonationsForCampaign } from "../../services/donationsService";
 import { uploadFile } from "../../services/fileUploadService";
 import { getAuth } from "firebase/auth";
 import { serverTimestamp } from "firebase/firestore";
-
-const CATEGORY_LABELS = {
-  operations: "تشغيلية",
-  purchase: "شراء",
-  salary: "راتب",
-  donation: "تبرع",
-  other: "أخرى",
-};
+import { getExpensesByCampaignId } from "../../services/expensesService";
 
 const STATUS_LABELS = {
   pending: "قيد المراجعة",
@@ -20,12 +13,20 @@ const STATUS_LABELS = {
   rejected: "مرفوض",
 };
 
-const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
+const AddExpenseForm = ({
+  initialData,
+  onSubmit,
+  onCancel,
+  user,
+  categories,
+}) => {
   const [campaigns, setCampaigns] = useState([]);
   const [selectedCampaign, setSelectedCampaign] = useState(
     initialData?.campaignId || ""
   );
   const [totalDonations, setTotalDonations] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [remainingAmount, setRemainingAmount] = useState(0);
   const [formData, setFormData] = useState({
     description: initialData?.description || "",
     amount: initialData?.amount || "",
@@ -36,6 +37,8 @@ const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Add state for selected category description
+  const [categoryDescription, setCategoryDescription] = useState("");
 
   // Determine if user can change status
   const canEditStatus =
@@ -54,20 +57,52 @@ const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
   }, []);
 
   useEffect(() => {
-    const fetchDonations = async () => {
+    const fetchDonationsAndExpenses = async () => {
       if (selectedCampaign) {
         try {
           const donations = await getDonationsForCampaign(selectedCampaign);
           const total = donations.reduce((acc, curr) => acc + curr.amount, 0);
           setTotalDonations(total);
+
+          // Fetch expenses for this campaign
+          const expenses = await getExpensesByCampaignId(selectedCampaign);
+          // If editing, exclude the current expense from the sum
+          let filteredExpenses = expenses;
+          if (initialData && initialData.id) {
+            filteredExpenses = expenses.filter((e) => e.id !== initialData.id);
+          }
+          const totalExp = filteredExpenses.reduce(
+            (acc, curr) => acc + Number(curr.amount || 0),
+            0
+          );
+          setTotalExpenses(totalExp);
+
+          setRemainingAmount(total - totalExp);
         } catch (error) {
-          console.error("Error fetching donations:", error);
+          console.error("Error fetching donations or expenses:", error);
           setTotalDonations(0);
+          setTotalExpenses(0);
+          setRemainingAmount(0);
         }
       }
     };
-    fetchDonations();
-  }, [selectedCampaign]);
+    fetchDonationsAndExpenses();
+  }, [selectedCampaign, initialData]);
+
+  useEffect(() => {
+    // This effect runs every time the amount input changes
+    // You can replace this with any logic you want (e.g., analytics, recalculation, etc.)
+    if (formData.amount !== undefined && formData.amount !== "") {
+      // Example: log the value
+      console.log("Amount input changed:", formData.amount);
+    }
+  }, [formData.amount]);
+
+  // Update category description when category changes
+  useEffect(() => {
+    const selectedCat = categories.find((c) => c.id === formData.category);
+    setCategoryDescription(selectedCat?.description || "");
+  }, [formData.category, categories]);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -123,8 +158,9 @@ const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
     }
 
     // Check against campaign budget
-    if (formData.amount > totalDonations)
-      newErrors.amount = "المبلغ أكبر من إجمالي تبرعات الحملة.";
+    if (formData.amount > remainingAmount) {
+      newErrors.amount = `المبلغ أكبر من المبلغ المتبقي للحملة (${remainingAmount} ج.س).`;
+    }
 
     // Check against campaign budget limit if exists
     if (selectedCampaign && selectedCampaign !== "general") {
@@ -185,10 +221,11 @@ const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
           {
             status: formData.status,
             changedBy: currentUser?.uid || "unknown",
-            changedAt: serverTimestamp(),
+            changedAt: new Date().toISOString(), // Use client timestamp
             reason: "Initial creation",
           },
         ],
+        category: formData.category, // This is now the Firestore document ID
       };
 
       // Submit expense
@@ -229,9 +266,9 @@ const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
           <p><strong>التاريخ:</strong> ${expenseData.date}</p>
           <p><strong>الوصف:</strong> ${expenseData.description}</p>
           <p><strong>المبلغ:</strong> ${expenseData.amount} ج.س</p>
-          <p><strong>التصنيف:</strong> ${
-            CATEGORY_LABELS[expenseData.category]
-          }</p>
+          <p><strong>التصنيف:</strong> ${getCategoryName(
+            expenseData.category
+          )}</p>
           <p><strong>الحالة:</strong> ${STATUS_LABELS[expenseData.status]}</p>
           <p><strong>المُقدِّم:</strong> ${expenseData.submittedBy}</p>
         </div>
@@ -256,8 +293,14 @@ const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
     }
   };
 
+  // When displaying the category name in the receipt, look up by ID
+  const getCategoryName = (catId) => {
+    const cat = categories.find((c) => c.id === catId);
+    return cat ? cat.nameAr : catId;
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 py-5 mb-5">
       <div>
         <label
           htmlFor="campaign"
@@ -305,7 +348,7 @@ const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
           ))}
         </select>
         {selectedCampaign && (
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-2 text-sm text-green-500 dark:text-gray-400">
             إجمالي التبرعات لهذه الحملة: {totalDonations} ج.س
           </p>
         )}
@@ -351,6 +394,14 @@ const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
             errors.amount ? "border-red-500" : ""
           }`}
         />
+        <p className="text-md text-green-500 mt-1">
+          المبلغ المتبقي للحملة: {remainingAmount} ج.س
+        </p>
+        {Number(formData.amount) > remainingAmount && (
+          <p className="text-xs text-red-600 mt-1 font-bold">
+            ⚠️ المبلغ يتجاوز التبرعات المتبقية لهذه الحملة ولا يمكن تقديمه.
+          </p>
+        )}
         {errors.amount && (
           <p className="text-xs text-red-500 mt-1">{errors.amount}</p>
         )}
@@ -369,12 +420,15 @@ const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
           onChange={handleChange}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         >
-          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.nameAr}
             </option>
           ))}
         </select>
+        {categoryDescription && (
+          <p className="text-xs text-gray-500 mt-1">{categoryDescription}</p>
+        )}
       </div>
       <div>
         <label
@@ -435,7 +489,7 @@ const AddExpenseForm = ({ initialData, onSubmit, onCancel, user }) => {
         </button>
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || Number(formData.amount) > remainingAmount}
           className="rounded-md border border-transparent bg-primary-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
         >
           {isSubmitting
@@ -454,6 +508,7 @@ AddExpenseForm.propTypes = {
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   user: PropTypes.object,
+  categories: PropTypes.arrayOf(PropTypes.object),
 };
 
 export default AddExpenseForm;

@@ -1,0 +1,70 @@
+You are an expert coding assistant. Your task is to implement a donation platform with the following features. **When adding features or fields, do not break or refactor the existing code structure (e.g., AddCampaignForm.js). Only add to the current logic and UI—do not remove or rewrite existing functionality. All changes must be additive and non-destructive.** Use this as a direct requirements specification. Do not ask for clarification—apply these features as described.
+
+---
+
+**Start by implementing the Add Campaign Form:**
+- Add all necessary fields and logic for campaign creation, following the additive/non-destructive rule above.
+- Use best practices for form validation, UI, and accessibility.
+- Do not remove or refactor existing form code—only add new fields, sections, or logic as needed.
+
+---
+
+**After the Add Campaign Form, implement the following features:**
+
+**Basic Features:**
+- Campaign listing (grid/list with images, titles, progress bars)
+- Campaign details page (description, images, goal, raised, beneficiaries)
+- Donation form (amount, name, contact info, payment method)
+- Progress tracking (visual progress bar)
+- Search & filter (by name, category, region, status)
+- Responsive design (mobile, tablet, desktop)
+- Thank you/confirmation after donation
+
+**Advanced Features:**
+- Recurring donations (monthly/recurring)
+- Donor wall (recent donors, messages)
+- Campaign updates (text, images, videos)
+- Comments & testimonials
+- Multiple images/gallery, video support
+- Anonymous donations option
+- Gift Aid/tax receipts
+- Matching donations (sponsor matching)
+- Wishlist/favorites
+- Donation cart (multi-campaign donation)
+- Social sharing (WhatsApp, Twitter, Facebook, etc.)
+- Personalized recommendations
+- Campaign verification badge
+- Campaign end status (auto-complete/expire)
+- Impact tracking (show how donations are used)
+- Receipts & certificates (auto-generate/email)
+- Multi-language & currency support
+- Accessibility (for people with disabilities)
+- QR code donations
+- Gamification (badges, leaderboards, progress bars)
+
+**Donor/User Features:**
+- User accounts & donation history
+- Anonymous donations
+- Notifications (email/SMS for confirmations, updates)
+
+**Admin/Organization Features:**
+- Campaign approval workflow
+- Analytics dashboard (donations, donors, performance)
+- Export data (CSV/Excel)
+- Automated notifications (email/SMS for milestones, endings)
+- Fraud detection (AI/rules)
+- Public reports (campaign outcomes, fund usage)
+
+**Transparency & Trust:**
+- Impact stories (photos, videos, stories)
+- Progress updates (fund usage)
+- Verification badges (for campaigns/orgs)
+
+**Accessibility & Internationalization:**
+- Multi-language support (Arabic, English, etc.)
+- Currency conversion
+- Accessibility (screen reader, keyboard navigation, color contrast)
+
+---
+
+Implement all features above as described. Use best practices for code, UI/UX, and accessibility. Do not ask for further clarification—treat this as the full requirements document. **Never break or refactor existing code structure—only add to it.** 

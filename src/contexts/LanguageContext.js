@@ -133,6 +133,18 @@ const translationKeys = {
     areaName: "السعاتة الدومة",
     regionName: "الخرطوم",
     countryName: "السودان",
+
+    // Settings Page
+    settings: "الإعدادات",
+    websiteSettings: "إعدادات الموقع",
+    organizationInfo: "معلومات المنظمة",
+    aboutUsPage: "صفحة من نحن",
+    bankAccounts: "الحسابات البنكية",
+    contactSupport: "التواصل والدعم",
+    themeAppearance: "المظهر والسمات",
+    donationSettings: "إعدادات التبرع",
+    privacySecurity: "الخصوصية والأمان",
+    customFieldsAdvanced: "حقول مخصصة ومتقدمة",
   },
 };
 

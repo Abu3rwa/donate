@@ -3,7 +3,6 @@ import {
   getAllUsers,
   deleteUserById,
   updateUserById,
-  createUserByAdminCloud,
 } from "../../services/userService";
 import {
   useAuth,
@@ -11,7 +10,6 @@ import {
   ADMIN_PERMISSIONS,
 } from "../../contexts/AuthContext";
 import { UserManagementModals } from "./UserManagementModals";
-import { getAuth } from "firebase/auth";
 import PERMISSIONS_AR from "../../helpers/permissionsMap";
 import {
   getRoleColor,
@@ -52,8 +50,6 @@ const UserManagementPage = () => {
   });
 
   const { user: currentUser, promoteToAdmin, demoteFromAdmin } = useAuth();
-
-  const auth = getAuth();
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -187,10 +183,6 @@ const UserManagementPage = () => {
           )
         );
         showNotification("تم تحديث المستخدم بنجاح");
-      } else {
-        const newUser = await createUserByAdminCloud(auth, saveData);
-        setUsers((prev) => [newUser, ...prev]);
-        showNotification("تم إضافة المستخدم بنجاح");
       }
       setShowForm(false);
       setEditUser(null);
@@ -274,6 +266,8 @@ const UserManagementPage = () => {
         handleUpgrade={handleUpgrade}
         handleDowngrade={handleDowngrade}
         showNotification={showNotification}
+        // Pass user images for display
+        showUserImage={true}
       />
 
       <UserManagementModals
@@ -297,7 +291,6 @@ const UserManagementPage = () => {
         currentUser={currentUser}
         promoteToAdmin={promoteToAdmin}
         demoteFromAdmin={demoteFromAdmin}
-        auth={auth}
       />
     </>
   );

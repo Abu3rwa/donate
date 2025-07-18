@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNotification } from "../../contexts/NotificationContext";
-import { useOrganizationInfo } from "../../contexts/OrganizationInfoContext";
+import { getOrgInfo } from "../../services/orgInfoService";
 import AddCampaignForm from "../../components/dashboard/AddCampaignForm";
 import {
   getAllCampaigns,
@@ -43,20 +43,20 @@ const StatusBadge = ({ status }) => {
       "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300",
     completed:
       "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300",
-    paused:
+    upcoming:
       "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300",
-    planning: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+    archived: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
   };
   const statusText = {
     active: "نشطة",
     completed: "مكتملة",
-    paused: "متوقفة",
-    planning: "قيد التخطيط",
+    upcoming: "قادمة",
+    archived: "مؤرشفة",
   };
   return (
     <span
       className={`px-3 py-1 text-xs font-semibold rounded-full inline-block ${
-        statusStyles[status] || statusStyles.planning
+        statusStyles[status] || statusStyles.archived
       }`}
     >
       {statusText[status] || status}
@@ -87,17 +87,7 @@ const Modal = ({ children, isOpen, onClose }) => (
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4"
         onClick={onClose}
       >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 dark:border-gray-700"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
-            {children}
-          </div>
-        </motion.div>
+        {children}
       </motion.div>
     )}
   </AnimatePresence>
@@ -106,7 +96,14 @@ const Modal = ({ children, isOpen, onClose }) => (
 const CampaignsPage = () => {
   const { user, hasPermission } = useAuth();
   const { showSuccess, showError } = useNotification();
-  const { orgInfo } = useOrganizationInfo();
+  const [orgInfo, setOrgInfo] = useState({});
+  useEffect(() => {
+    const fetchOrg = async () => {
+      const info = await getOrgInfo();
+      setOrgInfo(info || {});
+    };
+    fetchOrg();
+  }, []);
   const exportRef = useRef(null);
 
   const [campaigns, setCampaigns] = useState([]);
@@ -153,12 +150,20 @@ const CampaignsPage = () => {
       const completedCampaigns = filtered.filter(
         (c) => c.status === "completed"
       ).length;
+      const upcomingCampaigns = filtered.filter(
+        (c) => c.status === "upcoming"
+      ).length;
+      const archivedCampaigns = filtered.filter(
+        (c) => c.status === "archived"
+      ).length;
       const totalGoal = filtered.reduce((sum, c) => sum + (c.goal || 0), 0);
       const totalRaised = filtered.reduce((sum, c) => sum + (c.raised || 0), 0);
       setStats({
         totalCampaigns,
         activeCampaigns,
         completedCampaigns,
+        upcomingCampaigns,
+        archivedCampaigns,
         totalGoal,
         totalRaised,
       });
@@ -350,6 +355,22 @@ const CampaignsPage = () => {
             </div>
             <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
               <p className="text-xs font-medium text-[var(--text-color-secondary)] mb-1">
+                القادمة
+              </p>
+              <p className="text-lg font-bold text-[var(--text-color)]">
+                {toArabicNumbers(stats.upcomingCampaigns)}
+              </p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-xs font-medium text-[var(--text-color-secondary)] mb-1">
+                المؤرشفة
+              </p>
+              <p className="text-lg font-bold text-[var(--text-color)]">
+                {toArabicNumbers(stats.archivedCampaigns)}
+              </p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-xs font-medium text-[var(--text-color-secondary)] mb-1">
                 إجمالي الأهداف
               </p>
               <p className="text-lg font-bold text-[var(--text-color)]">
@@ -405,8 +426,8 @@ const CampaignsPage = () => {
                 <option value="all">جميع الحالات</option>
                 <option value="active">نشطة</option>
                 <option value="completed">مكتملة</option>
-                <option value="paused">متوقفة</option>
-                <option value="planning">قيد التخطيط</option>
+                <option value="upcoming">قادمة</option>
+                <option value="archived">مؤرشفة</option>
               </select>
             </div>
           </div>

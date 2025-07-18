@@ -1,14 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-const CATEGORY_LABELS = {
-  operations: "تشغيلية",
-  purchase: "شراء",
-  salary: "راتب",
-  donation: "تبرع",
-  other: "أخرى",
-};
-
 const STATUS_LABELS = {
   pending: "قيد المراجعة",
   approved: "مقبول",
@@ -24,24 +16,25 @@ const FiltersBar = ({
   setSearch,
   onAdd,
   hasPermission,
+  categories = [],
 }) => {
   return (
     <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
         <select
-          className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+          className="rounded-lg border text-center px-7 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
         >
           <option value="all">كل التصنيفات</option>
-          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.nameAr}
             </option>
           ))}
         </select>
         <select
-          className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+          className="rounded-lg text-center px-7 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
@@ -73,6 +66,12 @@ FiltersBar.propTypes = {
   setSearch: PropTypes.func.isRequired,
   onAdd: PropTypes.func.isRequired,
   hasPermission: PropTypes.func.isRequired,
+  categories: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      nameAr: PropTypes.string.isRequired,
+    })
+  ),
 };
 
 export default FiltersBar;

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef } from "react";
 import {
   Search,
   Plus,
@@ -11,16 +11,20 @@ import {
   Check,
   AlertCircle,
   MoreVertical,
+  KeyRound,
+  LogOut,
+  Table,
+  LayoutGrid,
 } from "lucide-react";
+import { ADMIN_TYPES, ADMIN_PERMISSIONS } from "../../contexts/AuthContext";
+import { getRoleColor, isAdmin, isRegularUser } from "./UserManagementHelpers";
 import {
-  ADMIN_TYPES,
-  ADMIN_PERMISSIONS,
-} from "../../contexts/AuthContext";
-import {
-  getRoleColor,
-  isAdmin,
-  isRegularUser,
-} from "./UserManagementHelpers";
+  resetPasswordByAdminCloud,
+  signOutUserByAdminCloud,
+  sendPasswordResetEmailByAdminCloud,
+} from "../../services/userService";
+import "./userManagement.css";
+import ActionMenu from "./ActionMenu";
 
 export const UserList = ({
   filteredUsers,
@@ -32,14 +36,48 @@ export const UserList = ({
   handleAddUserClick,
   handleEdit,
   setDeleteConfirm,
-  setOpenActionMenu,
-  openActionMenu,
   setShowPermissions,
   currentUser,
   handleUpgrade,
   handleDowngrade,
   showNotification,
+  onUserDeleted, // <-- add this prop for callback after delete
 }) => {
+  const [view, setView] = useState("table"); // 'table' or 'cards'
+  const [openMenuUserId, setOpenMenuUserId] = useState(null);
+  const menuRef = useRef();
+
+  // Close menu on outside click
+  React.useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpenMenuUserId(null);
+      }
+    }
+    if (openMenuUserId) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openMenuUserId]);
+
+  // Fix: force update the list after a user is deleted
+  const handleDeleteUser = async (user) => {
+    if (setDeleteConfirm) {
+      setDeleteConfirm({
+        user,
+        onDeleted: () => {
+          if (typeof onUserDeleted === "function") {
+            onUserDeleted(user);
+          }
+        },
+      });
+    }
+  };
+
   return (
     <div
       className="min-h-screen bg-[var(--background-color)] text-[var(--text-primary)]"
@@ -50,14 +88,14 @@ export const UserList = ({
       }}
     >
       {/* Header */}
-      <div className="bg-[var(--paper-color)] shadow-sm border-b border-[var(--divider)]">
+      <div className="bg-[var(--paper-color)] shadow-sm border-b border-[var(--divider)] gradient-accent rounded">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3 space-x-reverse">
-              <div className="bg-[var(--primary-color)] p-2 rounded-lg">
+              <div className="bg-[var(--primary-color)] p-2 rounded-lg  ">
                 <Users className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">
+              <h1 className="text-xl sm:text-2xl font-bold text-white">
                 إدارة المستخدمين
               </h1>
             </div>
@@ -77,7 +115,7 @@ export const UserList = ({
               {error}
             </span>
             <button
-              onClick={() => showNotification(null, 'error')}
+              onClick={() => showNotification(null, "error")}
               className="mr-auto text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
             >
               <X className="h-4 w-4" />
@@ -92,7 +130,7 @@ export const UserList = ({
               {success}
             </span>
             <button
-              onClick={() => showNotification(null, 'success')}
+              onClick={() => showNotification(null, "success")}
               className="mr-auto text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
             >
               <X className="h-4 w-4" />
@@ -112,13 +150,35 @@ export const UserList = ({
               className="w-full pr-10 pl-4 py-2 border border-[var(--divider)] rounded-lg bg-[var(--paper-color)] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent"
             />
           </div>
-          <button
-            className="flex items-center gap-2 bg-[var(--primary-color)] hover:bg-[var(--primary-dark)] text-white px-4 py-2 rounded-lg transition-colors font-medium"
-            onClick={handleAddUserClick}
-          >
-            <Plus className="h-4 w-4" />
-            إضافة مستخدم
-          </button>
+          <div className="flex gap-2">
+            <button
+              className={`px-3 py-1 rounded-lg font-medium border ${
+                view === "table"
+                  ? "gradient-accent text-white border-none"
+                  : "bg-white text-[var(--primary-color)] border-[var(--primary-color)]"
+              }`}
+              onClick={() => setView("table")}
+            >
+              <Table className="inline-block ml-2 w-4 h-4" /> جدول
+            </button>
+            <button
+              className={`px-3 py-1 rounded-lg font-medium border ${
+                view === "cards"
+                  ? "gradient-accent text-white border-none"
+                  : "bg-white text-[var(--primary-color)] border-[var(--primary-color)]"
+              }`}
+              onClick={() => setView("cards")}
+            >
+              <LayoutGrid className="inline-block ml-2 w-4 h-4" /> بطاقات
+            </button>
+            <button
+              className="flex items-center gap-2 bg-[var(--primary-color)] hover:bg-[var(--primary-dark)] text-white px-4 py-2 rounded-lg transition-colors font-medium"
+              onClick={handleAddUserClick}
+            >
+              <Plus className="h-4 w-4" />
+              إضافة مستخدم
+            </button>
+          </div>
         </div>
 
         {/* Users List */}
@@ -129,7 +189,7 @@ export const UserList = ({
               جاري تحميل المستخدمين...
             </p>
           </div>
-        ) : (
+        ) : view === "table" ? (
           <div className="bg-[var(--paper-color)] rounded-xl shadow-sm overflow-visible">
             {/* Desktop Table */}
             <div className="hidden md:block">
@@ -151,20 +211,42 @@ export const UserList = ({
                   {filteredUsers.map((user) => (
                     <tr
                       key={user.id || user.uid}
-                      className="hover:bg-[var(--background-color)] transition-colors"
+                      className={`hover:bg-[var(--background-color)] transition-colors ${
+                        currentUser &&
+                        (user.id === currentUser.uid ||
+                          user.uid === currentUser.uid)
+                          ? "ring-2 ring-[var(--primary-color)] bg-yellow-50 dark:bg-yellow-900/20"
+                          : ""
+                      }`}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="bg-[var(--primary-light)] p-2 rounded-lg ml-3">
-                            <Users className="h-5 w-5 text-[var(--primary-color)]" />
-                          </div>
+                          {currentUser &&
+                            (user.id === currentUser.uid ||
+                              user.uid === currentUser.uid) && (
+                              <span className="ml-2 px-2 py-0.5 rounded-full bg-yellow-400 text-xs text-yellow-900 font-bold">
+                                أنت
+                              </span>
+                            )}
+                          {/* ...avatar and name... */}
+                          {user.photoURL || user.profileImage ? (
+                            <img
+                              src={user.photoURL || user.profileImage}
+                              alt={user.displayName || user.name || "—"}
+                              className="w-10 h-10 rounded-full object-cover border ml-3"
+                            />
+                          ) : (
+                            <div className="bg-[var(--primary-light)] p-2 rounded-lg ml-3">
+                              <Users className="h-5 w-5 text-[var(--primary-color)]" />
+                            </div>
+                          )}
                           <div>
                             <div className="text-sm font-medium text-[var(--text-primary)]">
                               {user.displayName || user.name || "—"}
                             </div>
                             <div className="text-sm text-[var(--text-secondary)] flex items-center">
                               <Mail className="h-3 w-3 ml-1" />
-                              {user.email || "—"}
+                              {user.phone || "—"}
                             </div>
                           </div>
                         </div>
@@ -184,215 +266,138 @@ export const UserList = ({
                             : user.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium relative">
-                        <div className="flex gap-2">
-                          <button
-                            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none"
-                            onClick={() =>
-                              setOpenActionMenu(
-                                openActionMenu === (user.id || user.uid)
-                                  ? null
-                                  : user.id || user.uid
-                              )
-                            }
-                            aria-label="إجراءات المستخدم"
-                          >
-                            <MoreVertical className="h-5 w-5" />
-                          </button>
-                          {openActionMenu === (user.id || user.uid) && (
-                            <div className="user-action-menu absolute left-0 z-50 mt-2 w-40 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 text-right">
-                              <button
-                                onClick={() => {
-                                  setOpenActionMenu(null);
-                                  handleEdit(user);
-                                }}
-                                className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
-                              >
-                                <Edit className="h-4 w-4" /> تعديل
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setOpenActionMenu(null);
-                                  setDeleteConfirm(user);
-                                }}
-                                className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-red-600"
-                              >
-                                <Trash2 className="h-4 w-4" /> حذف
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setOpenActionMenu(null);
-                                  setShowPermissions({ open: true, user });
-                                }}
-                                className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
-                              >
-                                <Shield className="h-4 w-4" /> عرض الصلاحيات
-                              </button>
-                              {/* Super admin role controls */}
-                              {currentUser?.adminType ===
-                                ADMIN_TYPES.SUPER_ADMIN &&
-                                currentUser?.uid !== (user.id || user.uid) && (
-                                  <>
-                                    {/* Upgrade: show for regular users and admins (not super admin) */}
-                                    {isRegularUser(user) || isAdmin(user) ? (
-                                      <button
-                                        onClick={() => {
-                                          setOpenActionMenu(null);
-                                          handleUpgrade(user);
-                                        }}
-                                        className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-green-600"
-                                        disabled={loading}
-                                      >
-                                        ▲ ترقية الدور
-                                      </button>
-                                    ) : null}
-                                    {/* Downgrade: show for admins (not super admin) */}
-                                    {isAdmin(user) ? (
-                                      <button
-                                        onClick={() => {
-                                          setOpenActionMenu(null);
-                                          handleDowngrade(user);
-                                        }}
-                                        className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-yellow-600"
-                                        disabled={loading}
-                                      >
-                                        ▼ تخفيض الدور
-                                      </button>
-                                    ) : null}
-                                  </>
-                                )}
-                            </div>
-                          )}
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {!(
+                          currentUser &&
+                          (user.id === currentUser.uid ||
+                            user.uid === currentUser.uid)
+                        ) && (
+                          <ActionMenu
+                            user={user}
+                            handleEdit={handleEdit}
+                            setDeleteConfirm={handleDeleteUser}
+                            showNotification={showNotification}
+                          />
+                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-
-            {/* Mobile Cards */}
+            {/* Mobile Cards (keep as fallback for mobile) */}
             <div className="md:hidden">
               {filteredUsers.map((user) => (
                 <div
                   key={user.id || user.uid}
-                  className="p-4 border-b border-[var(--divider)] last:border-b-0"
+                  className={`p-4 border-b border-[var(--divider)] last:border-b-0 ${
+                    currentUser &&
+                    (user.id === currentUser.uid ||
+                      user.uid === currentUser.uid)
+                      ? "ring-2 ring-[var(--primary-color)] bg-yellow-50 dark:bg-yellow-900/20"
+                      : ""
+                  }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center flex-1">
-                      <div className="bg-[var(--primary-light)] p-2 rounded-lg ml-3">
-                        <Users className="h-5 w-5 text-[var(--primary-color)]" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-[var(--text-primary)] mb-1">
-                          {user.displayName || user.name || "—"}
-                        </div>
-                        <div className="text-xs text-[var(--text-secondary)] flex items-center mb-2">
-                          <Mail className="h-3 w-3 ml-1" />
-                          {user.email || "—"}
-                        </div>
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getRoleColor(
-                            user.adminType
-                              ? ADMIN_PERMISSIONS[user.adminType]?.name
-                              : user.role
-                          )}`}
-                        >
-                          <Shield className="h-3 w-3 ml-1" />
-                          {user.adminType
-                            ? ADMIN_PERMISSIONS[user.adminType]?.name ||
-                              user.role
-                            : user.role}
+                  {/* ...mobile card content... */}
+                  <div className="text-sm font-medium text-[var(--text-primary)] mb-1 flex items-center gap-2">
+                    {user.displayName || user.name || "—"}
+                    {currentUser &&
+                      (user.id === currentUser.uid ||
+                        user.uid === currentUser.uid) && (
+                        <span className="px-2 py-0.5 rounded-full bg-yellow-400 text-xs text-yellow-900 font-bold">
+                          أنت
                         </span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 relative">
-                      <button
-                        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none"
-                        onClick={() =>
-                          setOpenActionMenu(
-                            openActionMenu === (user.id || user.uid)
-                              ? null
-                              : user.id || user.uid
-                          )
-                        }
-                        aria-label="إجراءات المستخدم"
-                      >
-                        <MoreVertical className="h-5 w-5" />
-                      </button>
-                      {openActionMenu === (user.id || user.uid) && (
-                        <div className="user-action-menu absolute left-0 z-50 mt-2 w-40 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 text-right">
-                          <button
-                            onClick={() => {
-                              setOpenActionMenu(null);
-                              handleEdit(user);
-                            }}
-                            className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
-                          >
-                            <Edit className="h-4 w-4" /> تعديل
-                          </button>
-                          <button
-                            onClick={() => {
-                              setOpenActionMenu(null);
-                              setDeleteConfirm(user);
-                            }}
-                            className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4" /> حذف
-                          </button>
-                          <button
-                            onClick={() => {
-                              setOpenActionMenu(null);
-                              setShowPermissions({ open: true, user });
-                            }}
-                            className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
-                          >
-                            <Shield className="h-4 w-4" /> عرض الصلاحيات
-                          </button>
-                          {currentUser?.adminType === ADMIN_TYPES.SUPER_ADMIN &&
-                            currentUser?.uid !== (user.id || user.uid) && (
-                              <>
-                                {/* Upgrade: show for regular users and admins (not super admin) */}
-                                {isRegularUser(user) || isAdmin(user) ? (
-                                  <button
-                                    onClick={() => {
-                                      setOpenActionMenu(null);
-                                      handleUpgrade(user);
-                                    }}
-                                    className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-green-600"
-                                    disabled={loading}
-                                  >
-                                    ▲ ترقية الدور
-                                  </button>
-                                ) : null}
-                                {/* Downgrade: show for admins (not super admin) */}
-                                {isAdmin(user) ? (
-                                  <button
-                                    onClick={() => {
-                                      setOpenActionMenu(null);
-                                      handleDowngrade(user);
-                                    }}
-                                    className="w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 text-yellow-600"
-                                    disabled={loading}
-                                  >
-                                    ▼ تخفيض الدور
-                                  </button>
-                                ) : null}
-                              </>
-                            )}
-                        </div>
                       )}
-                    </div>
                   </div>
+                  {/* ...rest of mobile card... */}
                 </div>
               ))}
             </div>
+          </div>
+        ) : (
+          // Card View
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredUsers.map((user) => (
+              <div
+                key={user.id || user.uid}
+                className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col items-center relative hover:shadow-2xl transition-shadow ${
+                  currentUser &&
+                  (user.id === currentUser.uid || user.uid === currentUser.uid)
+                    ? "ring-2 ring-[var(--primary-color)] bg-yellow-50 dark:bg-yellow-900/20"
+                    : ""
+                }`}
+              >
+                {/* Avatar */}
+                {user.photoURL || user.profileImage ? (
+                  <img
+                    src={user.photoURL || user.profileImage}
+                    alt={user.displayName || user.name || "—"}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-[var(--primary-color)] mb-3"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-[var(--primary-light)] flex items-center justify-center mb-3">
+                    <Users className="h-8 w-8 text-[var(--primary-color)]" />
+                  </div>
+                )}
 
+                {/* Name and Email */}
+                <div className="text-center mb-2">
+                  <div className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2 justify-center">
+                    {user.displayName || user.name || "—"}
+                    {currentUser &&
+                      (user.id === currentUser.uid ||
+                        user.uid === currentUser.uid) && (
+                        <span className="px-2 py-0.5 rounded-full bg-yellow-400 text-xs text-yellow-900 font-bold">
+                          أنت
+                        </span>
+                      )}
+                  </div>
+                  <div className="text-xs text-[var(--text-secondary)]">
+                    {user.email || "—"}
+                  </div>
+                  <div className="text-xs text-[var(--text-secondary)] mt-1">
+                    {user.phone || "—"}
+                  </div>
+                </div>
+
+                {/* Role Badge */}
+                <span
+                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold mb-2 ${
+                    user.adminType
+                      ? "bg-yellow-100 text-yellow-800"
+                      : user.role === "مشاهد"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-green-100 text-green-800"
+                  }`}
+                >
+                  <Shield className="h-3 w-3 ml-1" />
+                  {user.adminType
+                    ? ADMIN_PERMISSIONS[user.adminType]?.name || user.role
+                    : user.role}
+                </span>
+
+                {/* Action Buttons for Card View */}
+                <div className="mt-3">
+                  {!(
+                    currentUser &&
+                    (user.id === currentUser.uid ||
+                      user.uid === currentUser.uid)
+                  ) && (
+                    <ActionMenu
+                      user={user}
+                      handleEdit={handleEdit}
+                      setDeleteConfirm={handleDeleteUser}
+                      showNotification={showNotification}
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
             {filteredUsers.length === 0 && !loading && (
-              <div className="text-center py-12">
+              <div className="col-span-full text-center py-12">
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-[var(--text-secondary)]">
-                  {searchTerm ? "لا ت��جد نتائج للبحث" : "لا توجد مستخدمين"}
+                  {searchTerm ? "لا تأجد نتائج للبحث" : "لا توجد مستخدمين"}
                 </p>
               </div>
             )}

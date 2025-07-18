@@ -1,0 +1,131 @@
+/* User Actions Dropdown Menu (for UserList) */
+.user-actions-menu {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  max-width: fit-content;
+  position: absolute;
+  right: -50px;
+  padding: 0.5rem 0;
+  z-index: 1000;
+}
+button {
+  background: #2563eb;
+  padding: 7px;
+}
+.user-actions-item {
+  margin: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 140px;
+  padding: 0.75rem 1.25rem;
+  background: none;
+  border: none;
+  color: #333;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-align: right;
+  border-radius: 0.375rem;
+  background: linear-gradient(45deg, #13b1ea, #11ba84);
+}
+
+/* Danger (Delete) */
+.user-actions-item.danger {
+  background: #dc2626;
+  color: #fff;
+}
+.user-actions-item.danger:hover {
+  background: #b91c1c;
+  color: #fff;
+}
+
+/* Success (Link) */
+.user-actions-item.success {
+  background: #059669;
+  color: #fff;
+}
+.user-actions-item.success:hover {
+  background: #047857;
+  color: #fff;
+}
+
+/* Warning (Password) */
+.user-actions-item.warning {
+  background: #f59e42;
+  color: #fff;
+}
+.user-actions-item.warning:hover {
+  background: #d97706;
+  color: #fff;
+}
+
+/* Info (Edit) */
+.user-actions-item.info {
+  background: #2563eb;
+  color: #fff;
+}
+.user-actions-item.info:hover {
+  background: #1e40af;
+  color: #fff;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  display: inline-block;
+}
+
+.btn-primary {
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--primary-dark, #1e40af);
+}
+
+.btn-danger {
+  background: #dc2626;
+  color: #fff;
+}
+.btn-danger:hover {
+  background: #b91c1c;
+}
+
+.gradient-accent {
+  background: linear-gradient(90deg, #2563eb 0%, #14b8a6 100%);
+  color: #fff;
+  border: none;
+}
+.gradient-accent:hover {
+  filter: brightness(1.08);
+}
+
+.open-menu-btn {
+  background: rgb(182, 182, 182);
+  color: teal;
+  border: none;
+  padding: 0.25rem;
+  border-radius: 5rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  color: #000000; /* slate-500 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.open-menu-btn:hover,
+.open-menu-btn:focus {
+  background: #f1f5f9; /* slate-100 */
+  color: #2563eb; /* primary */
+  outline: none;
+}

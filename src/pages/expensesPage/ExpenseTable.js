@@ -1,17 +1,52 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import StatusBadge from './StatusBadge';
-import ExpenseBills from './ExpenseBills';
+import React, { useEffect, useState } from "react";
+import PropTypes from "prop-types";
+import StatusBadge from "./StatusBadge";
+import ExpenseBills from "./ExpenseBills";
+import { getUserById } from "../../services/userService";
+import { formatDate } from "./expenseHelpers";
 
 const CATEGORY_LABELS = {
-  operations: 'تشغيلية',
-  purchase: 'شراء',
-  salary: 'راتب',
-  donation: 'تبرع',
-  other: 'أخرى',
+  operations: "تشغيلية",
+  purchase: "شراء",
+  salary: "راتب",
+  donation: "تبرع",
+  other: "أخرى",
 };
 
-const ExpenseTable = ({ expenses, onEdit, onDelete, hasPermission }) => {
+const ExpenseTable = ({
+  expenses,
+  onEdit,
+  onDelete,
+  hasPermission,
+  categories = [],
+}) => {
+  const [userNames, setUserNames] = useState({});
+
+  useEffect(() => {
+    // Find all unique submittedBy values that look like UIDs (not names)
+    const uids = expenses
+      .map((item) => item.submittedBy)
+      .filter((v) => v && /^[a-zA-Z0-9]{20,}$/.test(v));
+    const uniqueUids = Array.from(new Set(uids));
+    // Fetch user names for UIDs not already cached
+    uniqueUids.forEach(async (uid) => {
+      if (!userNames[uid]) {
+        const user = await getUserById(uid);
+        setUserNames((prev) => ({
+          ...prev,
+          [uid]: user?.displayName || "غير معروف",
+        }));
+      }
+    });
+    // eslint-disable-next-line
+  }, [expenses]);
+
+  // Helper to get category name by ID
+  const getCategoryName = (catId) => {
+    const cat = categories.find((c) => c.id === catId);
+    return cat ? cat.nameAr : catId;
+  };
+
   return (
     <div className="hidden md:block">
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 rounded-xl overflow-hidden">
@@ -20,9 +55,7 @@ const ExpenseTable = ({ expenses, onEdit, onDelete, hasPermission }) => {
             <th className="p-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">
               التصنيف
             </th>
-            <th className="p-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">
-              الوصف
-            </th>
+
             <th className="p-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">
               المبلغ
             </th>
@@ -46,21 +79,20 @@ const ExpenseTable = ({ expenses, onEdit, onDelete, hasPermission }) => {
               className="border-b border-gray-100 dark:border-gray-700"
             >
               <td className="p-3 text-sm font-medium text-gray-900 dark:text-white">
-                {CATEGORY_LABELS[item.category] || item.category}
+                {getCategoryName(item.category)}
               </td>
-              <td className="p-3 text-sm text-gray-700 dark:text-gray-200 break-words whitespace-pre-line max-w-xs">
-                {item.description}
-              </td>
+
               <td className="p-3 text-sm text-gray-700 dark:text-gray-200">
                 {item.amount} ج.س
               </td>
               <td className="p-3 text-xs text-gray-500 dark:text-gray-400">
-                {item.submittedBy || 'غير معروف'}
+                {/* If submittedBy looks like a UID, show fetched name; else show as is */}
+                {/^[a-zA-Z0-9]{20,}$/.test(item.submittedBy)
+                  ? userNames[item.submittedBy] || "..."
+                  : item.submittedBy || "غير معروف"}
               </td>
               <td className="p-3 text-xs text-gray-500 dark:text-gray-400">
-                {item.createdAt
-                  ? new Date(item.createdAt).toLocaleDateString("ar-EG")
-                  : "-"}
+                {formatDate(item.createdAt)}
               </td>
               <td className="p-3">
                 <StatusBadge status={item.status} />
@@ -103,6 +135,12 @@ ExpenseTable.propTypes = {
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   hasPermission: PropTypes.func.isRequired,
+  categories: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      nameAr: PropTypes.string.isRequired,
+    })
+  ),
 };
 
 export default ExpenseTable;

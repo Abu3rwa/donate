@@ -2,15 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 import { uploadLogo } from "../services/fileUploadService";
+import { getOrgInfo, updateOrgInfo } from "../services/orgInfoService";
 
-import { useOrganizationInfo } from "../contexts/OrganizationInfoContext";
 import { useTheme } from "../contexts/ThemeContext";
 
 const OrganizationInfoPage = () => {
   const { user } = useAuth();
   const isAdmin = user && user.adminType;
-  const { orgInfo: orgInfoState, saveOrgInfo, loading: orgInfoLoading } = useOrganizationInfo();
-  const [orgInfo, setOrgInfoState] = useState(null);
+  const [orgInfo, setOrgInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editMode, setEditMode] = useState(false);
@@ -20,12 +19,15 @@ const OrganizationInfoPage = () => {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (!orgInfoLoading) {
-      setOrgInfoState(orgInfoState);
-      setForm(orgInfoState);
+    const fetchOrg = async () => {
+      setLoading(true);
+      const info = await getOrgInfo();
+      setOrgInfo(info || {});
+      setForm(info || {});
       setLoading(false);
-    }
-  }, [orgInfoState, orgInfoLoading]);
+    };
+    fetchOrg();
+  }, []);
 
   const handleEdit = () => {
     setForm(orgInfo);
@@ -79,38 +81,90 @@ const OrganizationInfoPage = () => {
     }));
   };
   const handleAddSocial = () => {
-    setForm((prev) => ({ ...prev, social: [...prev.social, { name: "", url: "" }] }));
+    setForm((prev) => ({
+      ...prev,
+      social: [...prev.social, { name: "", url: "" }],
+    }));
   };
   const handleRemoveSocial = (idx) => {
-    setForm((prev) => ({ ...prev, social: prev.social.filter((_, i) => i !== idx) }));
+    setForm((prev) => ({
+      ...prev,
+      social: prev.social.filter((_, i) => i !== idx),
+    }));
   };
 
-  
+  const handleVideoChange = (idx, field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      videos: prev.videos.map((v, i) =>
+        i === idx ? { ...v, [field]: value } : v
+      ),
+    }));
+  };
+
+  const handleAddVideo = () => {
+    setForm((prev) => ({
+      ...prev,
+      videos: [...(prev.videos || []), { title: "", url: "" }],
+    }));
+  };
+
+  const handleRemoveVideo = (idx) => {
+    setForm((prev) => ({
+      ...prev,
+      videos: prev.videos.filter((_, i) => i !== idx),
+    }));
+  };
+
+  // Add bank accounts handlers
+  const handleBankChange = (idx, field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      banks: prev.banks.map((b, i) =>
+        i === idx ? { ...b, [field]: value } : b
+      ),
+    }));
+  };
+  const handleAddBank = () => {
+    setForm((prev) => ({
+      ...prev,
+      banks: [
+        ...(prev.banks || []),
+        { bankName: "", accountNumber: "", accountHolder: "", cardNumber: "" },
+      ],
+    }));
+  };
+  const handleRemoveBank = (idx) => {
+    setForm((prev) => ({
+      ...prev,
+      banks: prev.banks.filter((_, i) => i !== idx),
+    }));
+  };
 
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('يرجى اختيار ملف صورة صالح');
+    if (!file.type.startsWith("image/")) {
+      setError("يرجى اختيار ملف صورة صالح");
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setError('حجم الملف يجب أن يكون أقل من 5 ميجابايت');
+      setError("حجم الملف يجب أن يكون أقل من 5 ميجابايت");
       return;
     }
 
     setUploadingLogo(true);
-    setError('');
-    
+    setError("");
+
     try {
       const downloadURL = await uploadLogo(file);
       setForm((prev) => ({ ...prev, logo: downloadURL }));
     } catch (err) {
-      setError('فشل رفع الشعار: ' + err.message);
+      setError("فشل رفع الشعار: " + err.message);
     } finally {
       setUploadingLogo(false);
     }
@@ -120,37 +174,38 @@ const OrganizationInfoPage = () => {
     fileInputRef.current?.click();
   };
 
+  // Save logic (calls updateOrgInfo)
   const handleSave = async () => {
     setSaving(true);
-    setError("");
     try {
-      console.log("Saving organization data:", form);
-      await saveOrgInfo(form);
-      console.log("Organization data saved successfully");
-      setOrgInfoState(form);
+      await updateOrgInfo(form);
+      setOrgInfo(form);
       setEditMode(false);
+      setError("");
     } catch (e) {
-      console.error("Error saving organization data:", e);
-      // Check if it's a permission error
-      if (e.message && e.message.includes('permission')) {
-        setError("فشل حفظ البيانات: لا توجد صلاحيات كافية. تأكد من أنك مسجل دخول كمدير.");
-      } else {
-        setError(`فشل حفظ البيانات: ${e.message || 'خطأ غير معروف'}`);
-      }
+      setError("فشل الحفظ. حاول مرة أخرى.");
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading || !orgInfo) return <div className="text-center py-8">جاري التحميل...</div>;
+  if (loading || !orgInfo)
+    return <div className="text-center py-8">جاري التحميل...</div>;
 
   return (
-    <div className="min-h-screen bg-[var(--background-color)] flex flex-col items-center pb-20" dir="rtl">
+    <div
+      className="min-h-screen bg-[var(--background-color)] flex flex-col items-center pb-20"
+      dir="rtl"
+    >
       <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 mx-auto">
         {/* Header Section */}
         <div className="text-center mb-8 sm:mb-12">
-          <h1 className="font-bold text-display-1 text-[var(--text-primary)] mb-2 leading-tight">معلومات الجمعية</h1>
-          <p className="text-heading-2 text-[var(--text-secondary)]">عرض وتعديل معلومات جمعية السعاتة الدومة الخيرية</p>
+          <h1 className="font-bold text-display-1 text-[var(--text-primary)] mb-2 leading-tight">
+            معلومات الجمعية
+          </h1>
+          <p className="text-heading-2 text-[var(--text-secondary)]">
+            عرض وتعديل معلومات جمعية السعاتة الدومة الخيرية
+          </p>
         </div>
         {/* Main Content Card */}
         <div className="bg-[var(--paper-color)] rounded-3xl shadow-2xl border border-[var(--divider)] overflow-hidden backdrop-blur-md">
@@ -159,22 +214,37 @@ const OrganizationInfoPage = () => {
             {/* Logo Section */}
             <div className="flex-shrink-0 w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 relative mb-4 lg:mb-0 flex flex-col items-center justify-center">
               <div
-                className={`w-full h-full rounded-2xl overflow-hidden border-4 border-white/20 shadow-lg flex items-center justify-center bg-white/10 ${editMode ? 'cursor-pointer border-dashed border-2 border-[var(--primary-color)]' : ''}`}
+                className={`w-full h-full rounded-2xl overflow-hidden border-4 border-white/20 shadow-lg flex items-center justify-center bg-white/10 ${
+                  editMode
+                    ? "cursor-pointer border-dashed border-2 border-[var(--primary-color)]"
+                    : ""
+                }`}
                 onClick={editMode ? triggerFileUpload : undefined}
-                onDragOver={e => { if (editMode) { e.preventDefault(); e.stopPropagation(); } }}
-                onDrop={e => {
+                onDragOver={(e) => {
+                  if (editMode) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                }}
+                onDrop={(e) => {
                   if (editMode) {
                     e.preventDefault();
                     e.stopPropagation();
                     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                      handleLogoUpload({ target: { files: e.dataTransfer.files } });
+                      handleLogoUpload({
+                        target: { files: e.dataTransfer.files },
+                      });
                     }
                   }
                 }}
-                title={editMode ? 'اضغط أو اسحب صورة هنا لتغيير الشعار' : ''}
+                title={editMode ? "اضغط أو اسحب صورة هنا لتغيير الشعار" : ""}
               >
                 <img
-                  src={editMode && form ? form.logo : orgInfo.logo || require("../assets/tempLogo.png")}
+                  src={
+                    editMode && form
+                      ? form.logo
+                      : orgInfo.logo || require("../assets/tempLogo.png")
+                  }
                   alt="شعار الجمعية"
                   className="w-full h-full object-cover"
                 />
@@ -201,7 +271,9 @@ const OrganizationInfoPage = () => {
                     onChange={handleLogoUpload}
                     className="hidden"
                   />
-                  <span className="text-xs text-gray-300 mt-1">PNG, JPG, JPEG • حتى 5MB</span>
+                  <span className="text-xs text-gray-300 mt-1">
+                    PNG, JPG, JPEG • حتى 5MB
+                  </span>
                 </>
               )}
             </div>
@@ -229,7 +301,9 @@ const OrganizationInfoPage = () => {
                   placeholder="الاسم الطويل"
                 />
               ) : (
-                <p className="text-heading-1 text-white/90">{orgInfo.longName}</p>
+                <p className="text-heading-1 text-white/90">
+                  {orgInfo.longName}
+                </p>
               )}
               {editMode && form ? (
                 <input
@@ -241,7 +315,9 @@ const OrganizationInfoPage = () => {
                   placeholder="وصف الجمعية"
                 />
               ) : (
-                <p className="text-body text-white/80 mt-1">{orgInfo.description}</p>
+                <p className="text-body text-white/80 mt-1">
+                  {orgInfo.description}
+                </p>
               )}
               {editMode && form ? (
                 <input
@@ -253,7 +329,9 @@ const OrganizationInfoPage = () => {
                   placeholder="موقع الجمعية (العنوان)"
                 />
               ) : (
-                <p className="text-body text-white/80 mt-1">{orgInfo.location}</p>
+                <p className="text-body text-white/80 mt-1">
+                  {orgInfo.location}
+                </p>
               )}
             </div>
           </div>
@@ -263,22 +341,52 @@ const OrganizationInfoPage = () => {
             <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  <svg
+                    className="w-4 h-4 text-blue-600 dark:text-blue-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                    />
                   </svg>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">وسائل التواصل</h3>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+                  وسائل التواصل
+                </h3>
               </div>
               <div className="space-y-4">
                 {/* Phones */}
                 <div>
-                  <h4 className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">أرقام الهاتف</h4>
+                  <h4 className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                    أرقام الهاتف
+                  </h4>
                   <div className="space-y-2">
-                    {(editMode && form ? form.contacts.phones : orgInfo.contacts.phones).map((phone, i) => (
-                      <div key={i} className="flex items-center gap-3 flex-wrap">
+                    {(editMode && form
+                      ? form.contacts.phones
+                      : orgInfo.contacts.phones
+                    ).map((phone, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 flex-wrap"
+                      >
                         <div className="w-7 h-7 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                          <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                          <svg
+                            className="w-4 h-4 text-green-600 dark:text-green-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                            />
                           </svg>
                         </div>
                         {editMode ? (
@@ -286,12 +394,14 @@ const OrganizationInfoPage = () => {
                             <input
                               type="text"
                               value={phone}
-                              onChange={e => handleArrayChange("phones", i, e.target.value)}
+                              onChange={(e) =>
+                                handleArrayChange("phones", i, e.target.value)
+                              }
                               className="flex-1 input input-bordered text-sm"
                               placeholder="رقم الهاتف"
                               dir="ltr"
                             />
-                            <button 
+                            <button
                               onClick={() => handleRemoveContact("phones", i)}
                               className="btn btn-error btn-sm w-full sm:w-auto"
                             >
@@ -299,12 +409,17 @@ const OrganizationInfoPage = () => {
                             </button>
                           </div>
                         ) : (
-                          <span dir="ltr" className="text-gray-900 dark:text-white font-medium">{phone}</span>
+                          <span
+                            dir="ltr"
+                            className="text-gray-900 dark:text-white font-medium"
+                          >
+                            {phone}
+                          </span>
                         )}
                       </div>
                     ))}
                     {editMode && (
-                      <button 
+                      <button
                         onClick={() => handleAddContact("phones")}
                         className="btn btn-outline btn-sm text-green-600 border-green-600 hover:bg-green-600 hover:text-white w-full sm:w-auto"
                       >
@@ -315,13 +430,31 @@ const OrganizationInfoPage = () => {
                 </div>
                 {/* Emails */}
                 <div>
-                  <h4 className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">البريد الإلكتروني</h4>
+                  <h4 className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                    البريد الإلكتروني
+                  </h4>
                   <div className="space-y-2">
-                    {(editMode && form ? form.contacts.emails : orgInfo.contacts.emails).map((email, i) => (
-                      <div key={i} className="flex items-center gap-3 flex-wrap">
+                    {(editMode && form
+                      ? form.contacts.emails
+                      : orgInfo.contacts.emails
+                    ).map((email, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 flex-wrap"
+                      >
                         <div className="w-7 h-7 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                          <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          <svg
+                            className="w-4 h-4 text-purple-600 dark:text-purple-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                            />
                           </svg>
                         </div>
                         {editMode ? (
@@ -329,12 +462,14 @@ const OrganizationInfoPage = () => {
                             <input
                               type="email"
                               value={email}
-                              onChange={e => handleArrayChange("emails", i, e.target.value)}
+                              onChange={(e) =>
+                                handleArrayChange("emails", i, e.target.value)
+                              }
                               className="flex-1 input input-bordered text-sm"
                               placeholder="البريد الإلكتروني"
                               dir="ltr"
                             />
-                            <button 
+                            <button
                               onClick={() => handleRemoveContact("emails", i)}
                               className="btn btn-error btn-sm w-full sm:w-auto"
                             >
@@ -342,12 +477,17 @@ const OrganizationInfoPage = () => {
                             </button>
                           </div>
                         ) : (
-                          <span dir="ltr" className="text-gray-900 dark:text-white font-medium">{email}</span>
+                          <span
+                            dir="ltr"
+                            className="text-gray-900 dark:text-white font-medium"
+                          >
+                            {email}
+                          </span>
                         )}
                       </div>
                     ))}
                     {editMode && (
-                      <button 
+                      <button
                         onClick={() => handleAddContact("emails")}
                         className="btn btn-outline btn-sm text-purple-600 border-purple-600 hover:bg-purple-600 hover:text-white w-full sm:w-auto"
                       >
@@ -362,63 +502,198 @@ const OrganizationInfoPage = () => {
             <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  <svg
+                    className="w-4 h-4 text-orange-600 dark:text-orange-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                    />
                   </svg>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">روابط التواصل الاجتماعي</h3>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+                  روابط التواصل الاجتماعي
+                </h3>
               </div>
               <div className="space-y-3">
-                {(editMode && form ? form.social : orgInfo.social).map((link, i) => (
-                  <div key={i} className="flex items-center gap-3 flex-wrap">
-                    <div className="w-7 h-7 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                      </svg>
-                    </div>
-                    {editMode ? (
-                      <div className="flex-1 flex flex-col sm:flex-row gap-2">
-                        <input
-                          type="text"
-                          value={link.name}
-                          onChange={e => handleSocialChange(i, "name", e.target.value)}
-                          className="input input-bordered w-full sm:w-32 text-sm"
-                          placeholder="اسم الرابط"
-                        />
-                        <input
-                          type="text"
-                          value={link.url}
-                          onChange={e => handleSocialChange(i, "url", e.target.value)}
-                          className="flex-1 input input-bordered text-sm"
-                          placeholder="رابط"
-                          dir="ltr"
-                        />
-                        <button 
-                          onClick={() => handleRemoveSocial(i)}
-                          className="btn btn-error btn-sm w-full sm:w-auto"
+                {(editMode && form ? form.social : orgInfo.social).map(
+                  (link, i) => (
+                    <div key={i} className="flex items-center gap-3 flex-wrap">
+                      <div className="w-7 h-7 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                        <svg
+                          className="w-4 h-4 text-blue-600 dark:text-blue-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          حذف
-                        </button>
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                          />
+                        </svg>
                       </div>
-                    ) : (
-                      <a 
-                        href={link.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium break-all"
-                        dir="ltr"
-                      >
-                        {link.name || link.url}
-                      </a>
-                    )}
-                  </div>
-                ))}
+                      {editMode ? (
+                        <div className="flex-1 flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="text"
+                            value={link.name}
+                            onChange={(e) =>
+                              handleSocialChange(i, "name", e.target.value)
+                            }
+                            className="input input-bordered w-full sm:w-32 text-sm"
+                            placeholder="اسم الرابط"
+                          />
+                          <input
+                            type="text"
+                            value={link.url}
+                            onChange={(e) =>
+                              handleSocialChange(i, "url", e.target.value)
+                            }
+                            className="flex-1 input input-bordered text-sm"
+                            placeholder="رابط"
+                            dir="ltr"
+                          />
+                          <button
+                            onClick={() => handleRemoveSocial(i)}
+                            className="btn btn-error btn-sm w-full sm:w-auto"
+                          >
+                            حذف
+                          </button>
+                        </div>
+                      ) : (
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium break-all"
+                          dir="ltr"
+                        >
+                          {link.name || link.url}
+                        </a>
+                      )}
+                    </div>
+                  )
+                )}
                 {editMode && (
-                  <button 
+                  <button
                     onClick={handleAddSocial}
                     className="btn btn-outline btn-sm text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white w-full sm:w-auto"
                   >
                     + إضافة رابط
+                  </button>
+                )}
+              </div>
+            </div>
+            {/* Videos Section */}
+            <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 sm:p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-red-600 dark:text-red-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+                  مقاطع الفيديو
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {(editMode && form ? form.videos || [] : orgInfo.videos || []).map(
+                  (video, i) => (
+                    <div key={i} className="flex items-center gap-3 flex-wrap">
+                      <div className="w-7 h-7 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+                        <svg
+                          className="w-4 h-4 text-red-600 dark:text-red-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </div>
+                      {editMode ? (
+                        <div className="flex-1 flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="text"
+                            value={video.title}
+                            onChange={(e) =>
+                              handleVideoChange(i, "title", e.target.value)
+                            }
+                            className="input input-bordered w-full sm:w-32 text-sm"
+                            placeholder="عنوان الفيديو"
+                          />
+                          <input
+                            type="text"
+                            value={video.url}
+                            onChange={(e) =>
+                              handleVideoChange(i, "url", e.target.value)
+                            }
+                            className="flex-1 input input-bordered text-sm"
+                            placeholder="رابط الفيديو"
+                            dir="ltr"
+                          />
+                          <button
+                            onClick={() => handleRemoveVideo(i)}
+                            className="btn btn-error btn-sm w-full sm:w-auto"
+                          >
+                            حذف
+                          </button>
+                        </div>
+                      ) : (
+                        <a
+                          href={video.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium break-all"
+                          dir="ltr"
+                        >
+                          {video.title || video.url}
+                        </a>
+                      )}
+                    </div>
+                  )
+                )}
+                {editMode && (
+                  <button
+                    onClick={handleAddVideo}
+                    className="btn btn-outline btn-sm text-red-600 border-red-600 hover:bg-red-600 hover:text-white w-full sm:w-auto"
+                  >
+                    + إضافة فيديو
                   </button>
                 )}
               </div>
@@ -428,7 +703,19 @@ const OrganizationInfoPage = () => {
               <section className="mt-8">
                 <div className="bg-green-50/80 dark:bg-green-900/30 rounded-2xl p-4 sm:p-6 lg:p-8 border border-green-200 dark:border-green-700 shadow-2xl backdrop-blur-md">
                   <h4 className="text-heading-1 font-bold text-green-800 dark:text-green-200 mb-6 flex items-center gap-2">
-                    <svg className="w-6 h-6 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <svg
+                      className="w-6 h-6 text-green-600 dark:text-green-300"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
                     خيارات التبرع المتكرر
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -439,21 +726,25 @@ const OrganizationInfoPage = () => {
                           type="checkbox"
                           name="recurringMonthlyEnabled"
                           checked={form.recurring?.monthly?.enabled || false}
-                          onChange={e => setForm(prev => ({
-                            ...prev,
-                            recurring: {
-                              ...prev.recurring,
-                              monthly: {
-                                ...prev.recurring?.monthly,
-                                enabled: e.target.checked,
-                                amount: prev.recurring?.monthly?.amount || ''
-                              }
-                            }
-                          }))}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              recurring: {
+                                ...prev.recurring,
+                                monthly: {
+                                  ...prev.recurring?.monthly,
+                                  enabled: e.target.checked,
+                                  amount: prev.recurring?.monthly?.amount || "",
+                                },
+                              },
+                            }))
+                          }
                           className="form-checkbox h-6 w-6 text-green-600 focus:ring-green-500 border-green-300 rounded transition-all duration-150"
                           aria-label="تفعيل التبرع الشهري"
                         />
-                        <span className="text-lg font-semibold text-green-900 dark:text-green-200">تبرع شهري</span>
+                        <span className="text-lg font-semibold text-green-900 dark:text-green-200">
+                          تبرع شهري
+                        </span>
                         {form.recurring?.monthly?.amount && (
                           <span className="ml-2 px-2 py-1 rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-bold">
                             الحالي: {form.recurring?.monthly?.amount} جنيه
@@ -465,23 +756,30 @@ const OrganizationInfoPage = () => {
                           type="number"
                           name="recurringMonthlyAmount"
                           id="recurringMonthlyAmount"
-                          value={form.recurring?.monthly?.amount || ''}
-                          onChange={e => setForm(prev => ({
-                            ...prev,
-                            recurring: {
-                              ...prev.recurring,
-                              monthly: {
-                                ...prev.recurring?.monthly,
-                                amount: e.target.value
-                              }
-                            }
-                          }))}
+                          value={form.recurring?.monthly?.amount || ""}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              recurring: {
+                                ...prev.recurring,
+                                monthly: {
+                                  ...prev.recurring?.monthly,
+                                  amount: e.target.value,
+                                },
+                              },
+                            }))
+                          }
                           className="peer input input-bordered w-full text-green-900 dark:text-green-100 bg-green-50/80 dark:bg-green-950/80 border-green-300 dark:border-green-700 focus:ring-green-500 focus:border-green-500 rounded-lg shadow-sm text-lg py-3 px-4 transition-all duration-150 disabled:opacity-60"
                           placeholder=" "
                           disabled={!form.recurring?.monthly?.enabled}
                           aria-label="مبلغ التبرع الشهري"
                         />
-                        <label htmlFor="recurringMonthlyAmount" className="absolute right-4 top-1/2 -translate-y-1/2 text-green-700 dark:text-green-300 text-base pointer-events-none transition-all duration-150 peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-focus:-top-3 peer-focus:text-xs bg-white/80 dark:bg-green-950/80 px-1 rounded">المبلغ الشهري (جنيه)</label>
+                        <label
+                          htmlFor="recurringMonthlyAmount"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-green-700 dark:text-green-300 text-base pointer-events-none transition-all duration-150 peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-focus:-top-3 peer-focus:text-xs bg-white/80 dark:bg-green-950/80 px-1 rounded"
+                        >
+                          المبلغ الشهري (جنيه)
+                        </label>
                       </div>
                     </div>
                     {/* Yearly Recurring */}
@@ -491,21 +789,25 @@ const OrganizationInfoPage = () => {
                           type="checkbox"
                           name="recurringYearlyEnabled"
                           checked={form.recurring?.yearly?.enabled || false}
-                          onChange={e => setForm(prev => ({
-                            ...prev,
-                            recurring: {
-                              ...prev.recurring,
-                              yearly: {
-                                ...prev.recurring?.yearly,
-                                enabled: e.target.checked,
-                                amount: prev.recurring?.yearly?.amount || ''
-                              }
-                            }
-                          }))}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              recurring: {
+                                ...prev.recurring,
+                                yearly: {
+                                  ...prev.recurring?.yearly,
+                                  enabled: e.target.checked,
+                                  amount: prev.recurring?.yearly?.amount || "",
+                                },
+                              },
+                            }))
+                          }
                           className="form-checkbox h-6 w-6 text-green-600 focus:ring-green-500 border-green-300 rounded transition-all duration-150"
                           aria-label="تفعيل التبرع السنوي"
                         />
-                        <span className="text-lg font-semibold text-green-900 dark:text-green-200">تبرع سنوي</span>
+                        <span className="text-lg font-semibold text-green-900 dark:text-green-200">
+                          تبرع سنوي
+                        </span>
                         {form.recurring?.yearly?.amount && (
                           <span className="ml-2 px-2 py-1 rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-bold">
                             الحالي: {form.recurring?.yearly?.amount} جنيه
@@ -517,23 +819,30 @@ const OrganizationInfoPage = () => {
                           type="number"
                           name="recurringYearlyAmount"
                           id="recurringYearlyAmount"
-                          value={form.recurring?.yearly?.amount || ''}
-                          onChange={e => setForm(prev => ({
-                            ...prev,
-                            recurring: {
-                              ...prev.recurring,
-                              yearly: {
-                                ...prev.recurring?.yearly,
-                                amount: e.target.value
-                              }
-                            }
-                          }))}
+                          value={form.recurring?.yearly?.amount || ""}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              recurring: {
+                                ...prev.recurring,
+                                yearly: {
+                                  ...prev.recurring?.yearly,
+                                  amount: e.target.value,
+                                },
+                              },
+                            }))
+                          }
                           className="peer input input-bordered w-full text-green-900 dark:text-green-100 bg-green-50/80 dark:bg-green-950/80 border-green-300 dark:border-green-700 focus:ring-green-500 focus:border-green-500 rounded-lg shadow-sm text-lg py-3 px-4 transition-all duration-150 disabled:opacity-60"
                           placeholder=" "
                           disabled={!form.recurring?.yearly?.enabled}
                           aria-label="مبلغ التبرع السنوي"
                         />
-                        <label htmlFor="recurringYearlyAmount" className="absolute right-4 top-1/2 -translate-y-1/2 text-green-700 dark:text-green-300 text-base pointer-events-none transition-all duration-150 peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-focus:-top-3 peer-focus:text-xs bg-white/80 dark:bg-green-950/80 px-1 rounded">المبلغ السنوي (جنيه)</label>
+                        <label
+                          htmlFor="recurringYearlyAmount"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-green-700 dark:text-green-300 text-base pointer-events-none transition-all duration-150 peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-focus:-top-3 peer-focus:text-xs bg-white/80 dark:bg-green-950/80 px-1 rounded"
+                        >
+                          المبلغ السنوي (جنيه)
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -543,76 +852,296 @@ const OrganizationInfoPage = () => {
               <section className="mt-8">
                 <div className="bg-green-50/80 dark:bg-green-900/30 rounded-2xl p-4 sm:p-6 lg:p-8 border border-green-200 dark:border-green-700 shadow-2xl backdrop-blur-md">
                   <h4 className="text-heading-1 font-bold text-green-800 dark:text-green-200 mb-6 flex items-center gap-2">
-                    <svg className="w-6 h-6 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <svg
+                      className="w-6 h-6 text-green-600 dark:text-green-300"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
                     خيارات التبرع المتكرر
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {orgInfo.recurring?.monthly?.enabled && (
-                      
                       <div className="bg-white/80 dark:bg-green-950/80 rounded-xl p-6 shadow-lg border border-green-100 dark:border-green-800 flex flex-col items-center">
-                        <span className="block text-lg font-semibold text-green-900 dark:text-green-200 mb-2">تبرع شهري</span>
-                        <span className="text-xl text-green-900 dark:text-green-100 font-bold">{orgInfo.recurring?.monthly?.amount} <span className="text-base font-normal">جنيه</span></span>
+                        <span className="block text-lg font-semibold text-green-900 dark:text-green-200 mb-2">
+                          تبرع شهري
+                        </span>
+                        <span className="text-xl text-green-900 dark:text-green-100 font-bold">
+                          {orgInfo.recurring?.monthly?.amount}{" "}
+                          <span className="text-base font-normal">جنيه</span>
+                        </span>
                       </div>
                     )}
                     {orgInfo.recurring?.yearly?.enabled && (
                       <div className="bg-white/80 dark:bg-green-950/80 rounded-xl p-6 shadow-lg border border-green-100 dark:border-green-800 flex flex-col items-center">
-                        <span className="block text-lg font-semibold text-green-900 dark:text-green-200 mb-2">تبرع سنوي</span>
-                        <span className="text-xl text-green-900 dark:text-green-100 font-bold">{orgInfo.recurring?.yearly?.amount} <span className="text-base font-normal">جنيه</span></span>
+                        <span className="block text-lg font-semibold text-green-900 dark:text-green-200 mb-2">
+                          تبرع سنوي
+                        </span>
+                        <span className="text-xl text-green-900 dark:text-green-100 font-bold">
+                          {orgInfo.recurring?.yearly?.amount}{" "}
+                          <span className="text-base font-normal">جنيه</span>
+                        </span>
                       </div>
                     )}
-                    {!(orgInfo.recurring?.monthly?.enabled || orgInfo.recurring?.yearly?.enabled) && (
-                      <div className="text-gray-500 col-span-full">لا توجد تبرعات متكررة محددة</div>
+                    {!(
+                      orgInfo.recurring?.monthly?.enabled ||
+                      orgInfo.recurring?.yearly?.enabled
+                    ) && (
+                      <div className="text-gray-500 col-span-full">
+                        لا توجد تبرعات متكررة محددة
+                      </div>
                     )}
                   </div>
                 </div>
               </section>
             )}
+            {/* Bank Accounts Section */}
+            <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 sm:p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-emerald-600 dark:text-emerald-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 9V7a5 5 0 00-10 0v2a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-7a2 2 0 00-2-2z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg sm:text-xl font-semibold text-emerald-900 dark:text-emerald-200">
+                  الحسابات البنكية
+                </h3>
+              </div>
+              {editMode && form ? (
+                <div className="space-y-4">
+                  {(form.banks || []).map((bank, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-col md:flex-row gap-2 md:gap-4 items-end bg-white dark:bg-gray-800 rounded-lg p-3 border border-emerald-100 dark:border-emerald-800 mb-2"
+                    >
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 text-right">
+                          اسم البنك
+                        </label>
+                        <input
+                          type="text"
+                          value={bank.bankName}
+                          onChange={(e) =>
+                            handleBankChange(i, "bankName", e.target.value)
+                          }
+                          className="input input-bordered w-full text-sm text-right"
+                          placeholder="اسم البنك"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 text-right">
+                          رقم الحساب
+                        </label>
+                        <input
+                          type="text"
+                          value={bank.accountNumber}
+                          onChange={(e) =>
+                            handleBankChange(i, "accountNumber", e.target.value)
+                          }
+                          className="input input-bordered w-full text-sm text-right"
+                          placeholder="رقم الحساب"
+                          dir="ltr"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 text-right">
+                          اسم صاحب الحساب
+                        </label>
+                        <input
+                          type="text"
+                          value={bank.accountHolder}
+                          onChange={(e) =>
+                            handleBankChange(i, "accountHolder", e.target.value)
+                          }
+                          className="input input-bordered w-full text-sm text-right"
+                          placeholder="اسم صاحب الحساب"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 text-right">
+                          رقم البطاقة
+                        </label>
+                        <input
+                          type="text"
+                          value={bank.cardNumber}
+                          onChange={(e) =>
+                            handleBankChange(i, "cardNumber", e.target.value)
+                          }
+                          className="input input-bordered w-full text-sm text-right"
+                          placeholder="رقم البطاقة البنكية"
+                          dir="ltr"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveBank(i)}
+                        className="btn btn-error btn-sm mt-2 md:mt-0"
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleAddBank}
+                    className="btn btn-outline btn-success w-full md:w-auto"
+                  >
+                    + إضافة حساب بنكي
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {orgInfo.banks && orgInfo.banks.length > 0 ? (
+                    orgInfo.banks.map((bank, i) => (
+                      <div
+                        key={i}
+                        className="flex flex-col md:flex-row gap-2 md:gap-4 items-end bg-white dark:bg-gray-800 rounded-lg p-3 border border-emerald-100 dark:border-emerald-800 mb-2"
+                      >
+                        <div className="flex-1 text-right">
+                          <span className="block text-xs text-gray-500">
+                            اسم البنك
+                          </span>
+                          <span className="font-medium">{bank.bankName}</span>
+                        </div>
+                        <div className="flex-1 text-right">
+                          <span className="block text-xs text-gray-500">
+                            رقم الحساب
+                          </span>
+                          <span dir="ltr" className="font-mono">
+                            {bank.accountNumber}
+                          </span>
+                        </div>
+                        <div className="flex-1 text-right">
+                          <span className="block text-xs text-gray-500">
+                            اسم صاحب الحساب
+                          </span>
+                          <span>{bank.accountHolder}</span>
+                        </div>
+                        {bank.cardNumber && (
+                          <div className="flex-1 text-right">
+                            <span className="block text-xs text-gray-500">
+                              رقم البطاقة
+                            </span>
+                            <span dir="ltr" className="font-mono">
+                              {bank.cardNumber}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-gray-500">
+                      لا توجد حسابات بنكية مضافة
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           {/* Action Buttons */}
           <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-t border-gray-200 dark:border-gray-600">
             {isAdmin && !editMode ? (
               <div className="text-center">
-                <button 
-                  onClick={handleEdit}
-                  className="btn btn-primary btn-lg"
-                >
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                <button onClick={handleEdit} className="btn btn-primary btn-lg">
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
                   </svg>
                   تعديل المعلومات
                 </button>
               </div>
             ) : editMode ? (
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button 
-                  onClick={handleSave} 
+                <button
+                  onClick={handleSave}
                   disabled={saving}
                   className="btn btn-success btn-lg w-full sm:w-auto"
                 >
                   {saving ? (
                     <>
-                      <svg className="animate-spin w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin w-5 h-5 ml-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       جاري الحفظ...
                     </>
                   ) : (
                     <>
-                      <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <svg
+                        className="w-5 h-5 ml-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                       حفظ التغييرات
                     </>
                   )}
                 </button>
-                <button 
-                  onClick={handleCancel} 
+                <button
+                  onClick={handleCancel}
                   disabled={saving}
                   className="btn btn-secondary btn-lg w-full sm:w-auto"
                 >
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                   إلغاء
                 </button>
@@ -625,10 +1154,22 @@ const OrganizationInfoPage = () => {
         {error && (
           <div className="mt-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
             <div className="flex items-center gap-3">
-              <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-5 h-5 text-red-600 dark:text-red-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
-              <span className="text-red-800 dark:text-red-200 font-medium">{error}</span>
+              <span className="text-red-800 dark:text-red-200 font-medium">
+                {error}
+              </span>
             </div>
           </div>
         )}
@@ -637,4 +1178,4 @@ const OrganizationInfoPage = () => {
   );
 };
 
-export default OrganizationInfoPage; 
+export default OrganizationInfoPage;

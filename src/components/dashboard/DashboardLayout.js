@@ -8,15 +8,14 @@ import { useSwipeable } from "react-swipeable";
 import AddDonationForm from "./AddDonationForm";
 import CampaignsPage from "../../pages/campaignsPage/CampaignsPage";
 import FinancialReportsPage from "../../pages/FinancialReportsPage";
-import ExpenseModerationPage from "../../pages/ExpenseModerationPage";
+import ContentModerationPage from "../../pages/contentModerationPage/contentModerationPage";
 import ExpensesPage from "../../pages/expensesPage/ExpensesPage";
 import BillsPage from "../../pages/BillsPage";
 import UserManagementPage from "../../pages/userManagement/UserManagementPage";
 import DonationsPage from "../../pages/donationsPage/DonationsPage";
 import OrganizationInfoPage from "../../pages/OrganizationInfoPage";
-
+import SettingsPage from "../../pages/setting/SettingsPage";
 import BottomNav from "./BottomNav";
-
 import DashboardOverview from "./DashboardOverview";
 // import UsersManagement from "./UsersManagement";
 
@@ -26,10 +25,8 @@ const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const isMobile = useMediaQuery({ maxWidth: 767 });
   const navigate = useNavigate();
-
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
-
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => isMobile && isSidebarOpen && closeSidebar(),
     onSwipedRight: () => !isMobile && !isSidebarOpen && toggleSidebar(),
@@ -40,7 +37,6 @@ const DashboardLayout = () => {
       closeSidebar();
     }
   }, [location.pathname, isMobile]);
-
   React.useEffect(() => {
     if (isSidebarOpen && isMobile) {
       document.body.style.overflow = "hidden";
@@ -51,13 +47,11 @@ const DashboardLayout = () => {
       document.body.style.overflow = "unset";
     };
   }, [isSidebarOpen, isMobile]);
-
   React.useEffect(() => {
     if (window.innerWidth < 800) {
       closeSidebar();
     }
   }, [isMobile]);
-
   const navigationItems = [
     {
       name: "نظرة عامة",
@@ -187,7 +181,7 @@ const DashboardLayout = () => {
           hasPermission={useAuth().hasPermission}
         />
 
-        <main className="p-4 sm:p-6 lg:p-8 flex-1 pt-10">
+        <main className="p-4 sm:p-6 lg:p-8 flex-1 pt-10 main-layout">
           <Routes>
             <Route index element={<DashboardOverview />} />
             <Route path="add-donation" element={<AddDonationForm />} />
@@ -196,13 +190,15 @@ const DashboardLayout = () => {
             <Route path="expenses" element={<ExpensesPage />} />
             <Route path="donations" element={<DonationsPage />} />
             <Route
-              path="organization-info"
+              path="organisation-info"
               element={<OrganizationInfoPage />}
             />
+
+            <Route path="settings" element={<SettingsPage />} />
             <Route path="bills" element={<BillsPage />} />
             <Route
               path="content-moderation"
-              element={<ExpenseModerationPage />}
+              element={<ContentModerationPage />}
             />
             <Route
               path="financial-reports"

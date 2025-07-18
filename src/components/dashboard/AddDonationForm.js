@@ -17,6 +17,7 @@ import toast from "react-hot-toast";
 import { getAllUsers } from "../../services/userService";
 import { useRef } from "react";
 import { getOrgInfo } from "../../services/orgInfoService";
+import countriesAr from "../../helpers/countriesAr";
 
 // --- Validation Schema ---
 const donationSchema = yup
@@ -61,6 +62,8 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
   const [amountPrefilled, setAmountPrefilled] = useState(false);
   const donorInputRef = useRef();
   const [orgInfo, setOrgInfo] = useState(null);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState(countriesAr[0]);
 
   const {
     register,
@@ -201,6 +204,7 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
           data.donationType === "recurring" ? data.recurringInterval : null,
         createdAt: serverTimestamp(),
         createdBy: user?.uid || "admin_manual_entry",
+        donorId: selectedDonor ? selectedDonor.id : null, // Add donorId if selected
       };
 
       // If parent provided onSubmit, use it
@@ -397,7 +401,7 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
                 {filteredUsers.map((user) => (
                   <li
                     key={user.id}
-                    className="px-4 py-2 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-700 text-[var(--text-color)]"
+                    className="px-4 py-2 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-700 text-[var(--text-color)] flex items-center gap-2"
                     onClick={() => {
                       setDonorQuery(
                         user.displayName ||
@@ -419,10 +423,73 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
                       }
                     }}
                   >
-                    {user.displayName || user.name || user.email || user.phone}
+                    {/* User image avatar */}
+                    {user.photoURL || user.profileImage ? (
+                      <img
+                        src={user.photoURL || user.profileImage}
+                        alt={user.displayName || user.name || "—"}
+                        className="w-8 h-8 rounded-full object-cover border"
+                      />
+                    ) : (
+                      <span className="inline-block w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-400 mr-2">
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                      </span>
+                    )}
+                    <span>
+                      {user.displayName ||
+                        user.name ||
+                        user.email ||
+                        user.phone}
+                    </span>
                   </li>
                 ))}
               </ul>
+            )}
+            {/* Show selected donor image next to name if selected */}
+            {selectedDonor && donationType === "one-time" && (
+              <div className="flex items-center gap-2 mt-2">
+                {selectedDonor.photoURL || selectedDonor.profileImage ? (
+                  <img
+                    src={selectedDonor.photoURL || selectedDonor.profileImage}
+                    alt={selectedDonor.displayName || selectedDonor.name || "—"}
+                    className="w-8 h-8 rounded-full object-cover border"
+                  />
+                ) : (
+                  <span className="inline-block w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-400 mr-2">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  </span>
+                )}
+                <span className="text-[var(--text-color)] font-semibold">
+                  {selectedDonor.displayName ||
+                    selectedDonor.name ||
+                    selectedDonor.email ||
+                    selectedDonor.phone}
+                </span>
+              </div>
             )}
             {/* Manual entry if no match */}
             {filteredUsers.length === 0 && donorQuery && !selectedDonor && (
@@ -445,23 +512,66 @@ export default function AddDonationForm({ onCancel, onSubmit }) {
               <p className="error-message">{errors.donorName.message}</p>
             )}
           </div>
-          {/* Donor Phone */}
+          {/* Donor Phone with Country Select */}
           <div>
-            <label
-              htmlFor="donorPhone"
-              className="block text-sm font-medium text-[var(--text-color)] mb-1"
-            >
-              رقم هاتف المتبرع
+            <label className="block text-sm font-medium text-[var(--text-color)] mb-1">
+              الدولة ورقم هاتف المتبرع
             </label>
-            <input
-              id="donorPhone"
-              type="tel"
-              {...register("donorPhone")}
-              className="input-field bg-[var(--background-color)] text-[var(--text-color)]"
-              pattern="[0-9]{8,15}"
-              inputMode="tel"
-              disabled={donationType === "monthly" || donationType === "yearly"}
-            />
+            <div className="flex gap-2 items-center">
+              {/* Searchable country select */}
+              <div className="relative w-2/5">
+                <input
+                  type="text"
+                  placeholder="ابحث عن الدولة..."
+                  value={countrySearch}
+                  onChange={(e) => setCountrySearch(e.target.value)}
+                  className="input-field bg-[var(--background-color)] text-[var(--text-color)] mb-1"
+                />
+                <ul className="absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow max-h-40 overflow-y-auto mt-1">
+                  {countriesAr
+                    .filter(
+                      (c) =>
+                        c.nameAr.includes(countrySearch) ||
+                        c.nameEn
+                          .toLowerCase()
+                          .includes(countrySearch.toLowerCase())
+                    )
+                    .map((c) => (
+                      <li
+                        key={c.code}
+                        className={`px-3 py-2 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-700 ${
+                          selectedCountry.code === c.code
+                            ? "bg-primary-100 dark:bg-primary-700"
+                            : ""
+                        }`}
+                        onClick={() => {
+                          setSelectedCountry(c);
+                          setCountrySearch(c.nameAr);
+                        }}
+                      >
+                        {c.nameAr} ({c.phone})
+                      </li>
+                    ))}
+                </ul>
+              </div>
+              {/* Phone code */}
+              <span className="px-2 py-2 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600">
+                {selectedCountry.phone}
+              </span>
+              {/* Phone input */}
+              <input
+                id="donorPhone"
+                type="tel"
+                {...register("donorPhone")}
+                className="input-field bg-[var(--background-color)] text-[var(--text-color)] flex-1"
+                pattern="[0-9]{8,15}"
+                inputMode="tel"
+                placeholder="رقم الهاتف بدون رمز الدولة"
+                disabled={
+                  donationType === "monthly" || donationType === "yearly"
+                }
+              />
+            </div>
             {errors.donorPhone && (
               <p className="error-message">{errors.donorPhone.message}</p>
             )}

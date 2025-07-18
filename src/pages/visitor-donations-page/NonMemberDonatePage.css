@@ -1,0 +1,254 @@
+/* NonMemberDonatePage.css */
+.donate-bg {
+  background: #f3f4f6;
+  min-height: 100vh;
+  font-family: "Tajawal", "Cairo", Arial, sans-serif;
+}
+
+.donate-search-input {
+  border: 1px solid #d1d5db;
+  border-radius: 999px 0 0 999px;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  outline: none;
+  background: #f9fafb;
+  color: #222;
+  width: 180px;
+  transition: border-color 0.2s;
+  direction: rtl;
+}
+.donate-search-input:focus {
+  border-color: #1ac8bf;
+}
+.donate-search-btn {
+  background: linear-gradient(90deg, #0ea5e9 0%, #22d3ee 60%, #10b981 100%);
+  color: #fff;
+  border: none;
+  border-radius: 0 999px 999px 0;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
+}
+.donate-search-btn:hover {
+  background: #10b981;
+}
+
+.donate-filters {
+  direction: rtl;
+}
+.donate-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  background: #f3f4f6;
+  color: #198754;
+  border: 1.5px solid #d1d5db;
+  border-radius: 999px;
+  padding: 0.4em 1.1em;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: background 0.18s, color 0.18s, border 0.18s;
+  cursor: pointer;
+  outline: none;
+}
+.donate-filter-btn.active {
+  background: #1ac8bf;
+  color: #fff;
+  border-color: #1ac8bf;
+  box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.1);
+}
+.donate-filter-btn:hover:not(.active) {
+  background: #e0f2fe;
+  color: #1ac8bf;
+}
+
+.donate-info-banner {
+  background: linear-gradient(90deg, #bbf7d0 0%, #a7f3d0 100%);
+  border-radius: 1.2em;
+  padding: 1.2em 1.5em;
+  margin-bottom: 1.5em;
+  box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.07);
+  border: 1.5px solid #d1fae5;
+  direction: rtl;
+}
+
+.donate-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 2rem;
+}
+@media (min-width: 640px) {
+  .donate-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .donate-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.donate-card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 1.2em;
+  box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.07);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.18s, border 0.18s;
+  position: relative;
+  min-height: 420px;
+}
+.donate-card:hover {
+  box-shadow: 0 6px 24px 0 rgba(16, 185, 129, 0.13);
+  border-color: #10b981;
+}
+.donate-card-sadaqah {
+  border-top: 6px solid #10b981;
+}
+.donate-card-zakat {
+  border-top: 6px solid #0ea5e9;
+}
+.donate-card-orphans {
+  border-top: 6px solid #f59e42;
+}
+.donate-card-default {
+  border-top: 6px solid #22d3ee;
+}
+.donate-card-img-wrap {
+  width: 100%;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  background: #f3f4f6;
+  border-radius: 1.2em 1.2em 0 0;
+}
+.donate-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 1.2em 1.2em 0 0;
+  display: block;
+}
+.donate-card-content {
+  flex: 1;
+  padding: 1.1em 1.2em 0.5em 1.2em;
+  display: flex;
+  flex-direction: column;
+  direction: rtl;
+}
+.donate-tag {
+  background: #e0f2fe;
+  color: #0ea5e9;
+  border-radius: 0.7em;
+  padding: 0.2em 0.8em;
+  font-size: 0.85em;
+  font-weight: 700;
+  margin-bottom: 0.2em;
+}
+.donate-card-title {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #198754;
+  margin-bottom: 0.5em;
+  font-family: "Tajawal", "Cairo", Arial, sans-serif;
+}
+.donate-progress-bar-wrap {
+  background: #e5e7eb;
+  border-radius: 999px;
+  height: 0.7em;
+  width: 100%;
+  overflow: hidden;
+}
+.donate-progress-bar {
+  background: linear-gradient(90deg, #10b981 0%, #0ea5e9 100%);
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s;
+}
+.donate-amount-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.7em;
+  padding: 0.5em 1em;
+  font-size: 1rem;
+  background: #f9fafb;
+  color: #222;
+  outline: none;
+  direction: rtl;
+  margin-bottom: 0.2em;
+}
+.donate-amount-input:focus {
+  border-color: #10b981;
+}
+.donate-card-footer {
+  display: flex;
+  gap: 0.5em;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8em 1.2em 1.1em 1.2em;
+  border-top: 1px solid #e5e7eb;
+  background: #fafafa;
+  direction: rtl;
+}
+.donate-btn-main {
+  background: #10b981;
+  color: #fff;
+  border: none;
+  border-radius: 0.7em;
+  padding: 0.5em 1.5em;
+  font-weight: 900;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.donate-btn-main:hover {
+  background: #0ea5e9;
+}
+.donate-btn-secondary {
+  background: none;
+  color: #198754;
+  border: none;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.5em 1em;
+  border-radius: 0.7em;
+  transition: color 0.18s, background 0.18s;
+}
+.donate-btn-secondary:hover {
+  background: #e0f2fe;
+  color: #0ea5e9;
+}
+.donate-btn-icon {
+  background: #e0f2fe;
+  color: #0ea5e9;
+  border: none;
+  border-radius: 50%;
+  padding: 0.5em;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  transition: background 0.18s, color 0.18s;
+}
+.donate-btn-icon:hover {
+  background: #10b981;
+  color: #fff;
+}
+.donate-gallery {
+  display: flex;
+  gap: 0.3em;
+  overflow-x: auto;
+  padding: 0.5em 1.2em 1em 1.2em;
+}
+.donate-gallery-img {
+  height: 2.5em;
+  width: 4em;
+  object-fit: cover;
+  border-radius: 0.5em;
+  border: 1px solid #e5e7eb;
+}

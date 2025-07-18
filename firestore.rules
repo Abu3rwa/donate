@@ -1,3 +1,4 @@
+   
 rules_version = '2';
 
 service cloud.firestore {
@@ -68,7 +69,7 @@ service cloud.firestore {
     // - Writable by Super Admins and Admins.
     match /organization/info {
       allow read: if true;
-      allow write: if isSuperAdmin() || isAdmin();
+      allow write: if isSuperAdmin() || isAdmin() || isCommunicationManager();
     }
 
     // Donations Collection:
@@ -89,10 +90,10 @@ service cloud.firestore {
     
     // Expenses Collection:
     // - Publicly readable.
-    // - Writable by Super Admins and Finance Managers.
+    // - Writable by Super Admins, Finance Managers, and Admins.
     match /expenses/{expenseId} {
         allow read: if true;
-        allow write: if isSuperAdmin() || isFinanceManager();
+        allow write: if isSuperAdmin() || isFinanceManager() || isAdmin();
     }
 
     // Bills Collection:
@@ -119,12 +120,54 @@ service cloud.firestore {
         allow write: if isSuperAdmin() || isVolunteerCoordinator();
     }
 
+    // Expense Categories Collection:
+    // - Publicly readable.
+    // - Writable by Super Admins and Finance Managers.
+    match /expense_categories/{categoryId} {
+      allow read: if true;
+      allow write: if isSuperAdmin() || isFinanceManager();
+    } 
+     // Moderation Comments Collections:
+    // - Readable by any signed-in user.
+    // - Writable by Super Admins and Admins.
+    match /expense_comments/{commentId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin() || isAdmin();
+    }
+    match /donation_comments/{commentId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin() || isAdmin();
+    }
+    match /campaign_comments/{commentId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin() || isAdmin();
+    }
+    match /post_comments/{commentId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin() || isAdmin();
+    }
+    match /story_comments/{commentId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin() || isAdmin();
+    }
     // Communications Collection:
     // - Publicly readable.
     // - Writable by Super Admins and Communication Managers.
     match /communications/{communicationId} {
         allow read: if true;
         allow write: if isSuperAdmin() || isCommunicationManager();
+    }
+  }
+    match /databases/{database}/documents {
+    // Only super_admins can read/write users
+    match /users/{userId} {
+      allow read, write: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.adminType == 'super_admin';
+    }
+    // Only the admin themselves can read their admin doc
+    match /admins/{adminId} {
+      allow read, write: if request.auth != null && request.auth.uid == adminId;
     }
   }
 }

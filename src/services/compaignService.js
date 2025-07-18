@@ -10,9 +10,12 @@ import {
   query,
   orderBy,
   where,
+  writeBatch,
 } from "firebase/firestore";
+import { deleteFile } from "./fileUploadService";
 
 const campaignsRef = collection(db, "campaigns");
+const donationsRef = collection(db, "donations");
 
 // Get all campaigns
 export const getAllCampaigns = async ({ dateRange = "all" } = {}) => {
@@ -74,7 +77,64 @@ export const updateCampaign = async (id, data) => {
 
 // Delete a campaign
 export const deleteCampaign = async (id) => {
-  const docRef = doc(db, "campaigns", id);
-  await deleteDoc(docRef);
+  // Get campaign data to find associated files
+  const campaignDocRef = doc(db, "campaigns", id);
+  const campaignSnap = await getDoc(campaignDocRef);
+  if (campaignSnap.exists()) {
+    const campaignData = campaignSnap.data();
+    // Delete image
+    if (campaignData.image) {
+      try {
+        await deleteFile(campaignData.image);
+      } catch (e) {
+        /* ignore */
+      }
+    }
+    // Delete gallery images
+    if (Array.isArray(campaignData.gallery)) {
+      for (const url of campaignData.gallery) {
+        if (url) {
+          try {
+            await deleteFile(url);
+          } catch (e) {
+            /* ignore */
+          }
+        }
+      }
+    }
+    // Delete video if it's an uploaded file (not a URL)
+    if (
+      campaignData.video &&
+      campaignData.video.startsWith("https://firebasestorage")
+    ) {
+      try {
+        await deleteFile(campaignData.video);
+      } catch (e) {
+        /* ignore */
+      }
+    }
+    // Delete documents
+    if (Array.isArray(campaignData.documents)) {
+      for (const url of campaignData.documents) {
+        if (url) {
+          try {
+            await deleteFile(url);
+          } catch (e) {
+            /* ignore */
+          }
+        }
+      }
+    }
+  }
+  // Delete all donations for this campaign
+  const q = query(donationsRef, where("campaignId", "==", id));
+  const snapshot = await getDocs(q);
+  const batch = writeBatch(db);
+  snapshot.forEach((docSnap) => {
+    batch.delete(docSnap.ref);
+  });
+  // Delete the campaign itself
+  batch.delete(campaignDocRef);
+  await batch.commit();
   return id;
 };

@@ -5,36 +5,49 @@ import * as yup from "yup";
 import { ADMIN_PERMISSIONS } from "../../contexts/AuthContext";
 import PERMISSIONS_AR from "../../helpers/permissionsMap";
 import { getAuth } from "firebase/auth";
+import { getApp } from "firebase/app";
+import { getFunctions } from "firebase/functions";
 import {
-  createUserDocument,
-  createUserByAdmin,
+  createUserByAdminCloud,
+  updateUserById,
 } from "../../services/userService";
 import toast from "react-hot-toast";
 import { useEffect } from "react";
+import { uploadFile } from "../../services/fileUploadService";
+import countriesAr from "../../helpers/countriesAr";
 
 const userSchema = yup
   .object({
-    firstName: yup.string().required("الاسم الأول مطلوب"),
-    lastName: yup.string().required("اسم العائلة مطلوب"),
+    displayName: yup.string().required("الاسم مطلوب"),
     email: yup
       .string()
       .email("البريد الإلكتروني غير صالح")
+      .matches(
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        "البريد الإلكتروني يحتوي على أحرف غير صالحة"
+      )
       .required("البريد الإلكتروني مطلوب"),
     phone: yup
       .string()
-      .matches(/^\d{8,15}$/, "رقم الهاتف غير صحيح")
+      // .matches(/^(\+|00)\d{8,20}$/, "رقم الهاتف غير صحيح")
       .required("رقم الهاتف مطلوب"),
-    password: yup.string().required("كلمة المرور مطلوبة"),
+    password: yup.string().when("$isEdit", {
+      is: true,
+      then: (schema) => schema.notRequired(),
+      otherwise: (schema) => schema.required("كلمة المرور مطلوبة"),
+    }),
     role: yup
       .string()
       .oneOf(["مسؤول", "محرر", "مشاهد"])
       .required("الدور مطلوب"),
     adminType: yup.string().when("role", {
-      is: (val) => val === "مسؤول",
+      is: "مسؤول",
       then: (schema) => schema.required("نوع المسؤول مطلوب"),
       otherwise: (schema) => schema.notRequired(),
     }),
-    photoURL: yup.string().url("رابط صورة غير صالح").nullable().notRequired(),
+    homeCountry: yup.string().required("الدولة الأصلية مطلوبة"),
+    currentCountry: yup.string().required("الدولة الحالية مطلوبة"),
+    profileImage: yup.mixed().notRequired(),
   })
   .required();
 
@@ -52,6 +65,8 @@ const FORM_STORAGE_KEY = "addUserForm_unsaved";
 
 export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
   const [isLoading, setIsLoading] = useState(false);
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
   // Load persisted form data if available
   const persistedData = React.useMemo(() => {
     if (initialData) return initialData;
@@ -72,8 +87,22 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
     formState: { errors },
   } = useForm({
     resolver: yupResolver(userSchema),
+    context: { isEdit: !!initialData },
     defaultValues: persistedData,
   });
+
+  // Handle profile image preview
+  const handleProfileImageChange = (e) => {
+    const file = e.target.files[0];
+    setProfileImageFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setProfileImagePreview(reader.result);
+      reader.readAsDataURL(file);
+    } else {
+      setProfileImagePreview(null);
+    }
+  };
 
   // Persist form data on change
   const watchedFields = watch();
@@ -84,6 +113,28 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
       } catch {}
     }
   }, [watchedFields, isLoading]);
+
+  useEffect(() => {
+    if (initialData) {
+      // Home Country
+      const homeCountryObj =
+        countriesAr.find((c) => c.nameAr === initialData.homeCountry) ||
+        countriesAr[0];
+      setSelectedHomeCountry(homeCountryObj);
+      setHomeCountrySearch(initialData.homeCountry || "");
+      setValue("homeCountry", initialData.homeCountry || "");
+      // Current Country
+      const currentCountryObj =
+        countriesAr.find((c) => c.nameAr === initialData.currentCountry) ||
+        countriesAr[0];
+      setSelectedCurrentCountry(currentCountryObj);
+      setCurrentCountrySearch(initialData.currentCountry || "");
+      setValue("currentCountry", initialData.currentCountry || "");
+      // Phone
+      setValue("phone", initialData.phone || "");
+      // Add more fields as needed
+    }
+  }, [initialData, setValue]);
 
   const role = watch("role");
   const adminType = watch("adminType");
@@ -106,32 +157,65 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
     new Set(Object.values(ADMIN_PERMISSIONS).flatMap((p) => p.permissions))
   ).filter((p) => p !== "all");
 
+  const [homeCountrySearch, setHomeCountrySearch] = useState("");
+  const [currentCountrySearch, setCurrentCountrySearch] = useState("");
+  const [selectedHomeCountry, setSelectedHomeCountry] = useState(
+    countriesAr[0]
+  );
+  const [selectedCurrentCountry, setSelectedCurrentCountry] = useState(
+    countriesAr[0]
+  );
+  const [showHomeDropdown, setShowHomeDropdown] = useState(false);
+  const [showCurrentDropdown, setShowCurrentDropdown] = useState(false);
+
   const onSubmit = async (data) => {
+    // Trim spaces from phone before validation and submission
+    data.phone = data.phone.replace(/\s+/g, "");
     setIsLoading(true);
     const auth = getAuth();
+
     if (!auth.currentUser) {
       toast.error("يجب تسجيل الدخول أولاً");
       setIsLoading(false);
       return;
     }
+
     try {
       const now = new Date();
       const timestamp = now.toISOString();
       const isAdmin = data.role === "مسؤول" && data.adminType;
       const adminPerm = isAdmin ? ADMIN_PERMISSIONS[data.adminType] : null;
-      // Prepare all user fields for Firestore
+
+      let uploadedImageUrl = initialData?.photoURL || null;
+      if (profileImageFile) {
+        let userId =
+          initialData?.uid ||
+          initialData?.id ||
+          data.email.replace(/[^a-zA-Z0-9]/g, "_");
+        try {
+          uploadedImageUrl = await uploadFile(
+            profileImageFile,
+            `users/${userId}/profile.jpg`
+          );
+        } catch (err) {
+          toast.error("فشل رفع صورة الملف الشخصي");
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const userProfile = {
-        displayName: `${data.firstName} ${data.lastName}`,
-        firstName: data.firstName,
-        lastName: data.lastName,
+        displayName: data.displayName,
         email: data.email,
         phone: data.phone,
-        photoURL: data.photoURL || null,
+        photoURL: uploadedImageUrl,
+        homeCountry: data.homeCountry,
+        currentCountry: data.currentCountry,
         isActive: true,
         lastLogin: timestamp,
         lastUpdated: timestamp,
-        createdAt: timestamp,
-        registrationDate: timestamp,
+        createdAt: initialData?.createdAt || timestamp,
+        registrationDate: initialData?.registrationDate || timestamp,
         source: "website",
         status: "Active",
         role:
@@ -141,31 +225,32 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
         adminType: isAdmin ? data.adminType : null,
         adminLevel: isAdmin ? adminPerm?.level : 0,
         permissions: isAdmin ? permissions : [],
-        emailVerified: false,
+        emailVerified: initialData?.emailVerified || false,
       };
+
       if (initialData && (initialData.uid || initialData.id)) {
-        // Editing existing user logic...
-        setIsLoading(false);
-        return;
-      }
-      // Creating new user
-      try {
-        const result = await createUserByAdmin(userProfile);
-        const finalUserProfile = { ...userProfile, id: result.id };
+        // Update existing user
+        const userId = initialData.uid || initialData.id;
+        await updateUserById(userId, userProfile);
+        toast.success("تم تحديث المستخدم بنجاح!");
+        onUserAdded({ ...userProfile, id: userId });
+      } else {
+        // Create new user as admin
+        const result = await createUserByAdminCloud({
+          ...userProfile,
+          password: data.password,
+        });
         toast.success("تم إنشاء المستخدم بنجاح!");
-        onUserAdded(finalUserProfile);
-        reset();
-        onCancel();
-        localStorage.removeItem(FORM_STORAGE_KEY);
-      } catch (err) {
-        console.error("❌ Failed to create user:", err);
-        toast.error(`فشل إنشاء المستخدم: ${err.message}`);
-      } finally {
-        setIsLoading(false);
+        onUserAdded({ ...userProfile, id: result.uid });
       }
-    } catch (error) {
-      console.error("❌ Unexpected error:", error);
-      toast.error("حدث خطأ غير متوقع");
+
+      reset();
+      onCancel();
+      localStorage.removeItem(FORM_STORAGE_KEY);
+    } catch (err) {
+      console.error("❌ Failed to create/update user:", err);
+      toast.error(`فشل العملية: ${err.message}`);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -176,8 +261,9 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
       noValidate
       onSubmit={handleSubmit(onSubmit)}
     >
-      <div className="text-center">
-        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900/50">
+      {/* Form content remains the same... */}
+      <div className="text-center gradient-accent rounded-lg py-6 mb-6">
+        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-white/20">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6 text-indigo-600 dark:text-indigo-400"
@@ -193,49 +279,49 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
             />
           </svg>
         </div>
-        <h3 className="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
-          إضافة مستخدم جديد
+        <h3 className="mt-4 text-xl font-semibold text-white">
+          {initialData ? "تعديل مستخدم" : "إضافة مستخدم جديد"}
         </h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-white/80">
           أدخل تفاصيل المستخدم لمنحه الوصول للنظام.
         </p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label
-            htmlFor="firstName"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-          >
-            الاسم الأول
-          </label>
-          <input
-            id="firstName"
-            type="text"
-            {...register("firstName")}
-            className="input-field"
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          صورة الملف الشخصي
+        </label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleProfileImageChange}
+          className="input-field"
+        />
+        {profileImagePreview && (
+          <img
+            src={profileImagePreview}
+            alt="معاينة الصورة"
+            className="mt-2 rounded-full w-20 h-20 object-cover border"
           />
-          {errors.firstName && (
-            <p className="error-message">{errors.firstName.message}</p>
-          )}
-        </div>
-        <div>
-          <label
-            htmlFor="lastName"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-          >
-            اسم العائلة
-          </label>
-          <input
-            id="lastName"
-            type="text"
-            {...register("lastName")}
-            className="input-field"
-          />
-          {errors.lastName && (
-            <p className="error-message">{errors.lastName.message}</p>
-          )}
-        </div>
+        )}
       </div>
+      <div>
+        <label
+          htmlFor="displayName"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
+          الاسم الكامل
+        </label>
+        <input
+          id="displayName"
+          type="text"
+          {...register("displayName")}
+          className="input-field"
+        />
+        {errors.displayName && (
+          <p className="error-message">{errors.displayName.message}</p>
+        )}
+      </div>
+
       <div>
         <label
           htmlFor="email"
@@ -248,6 +334,7 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
           type="email"
           {...register("email")}
           className="input-field"
+          disabled={!!initialData}
         />
         {errors.email && (
           <p className="error-message">{errors.email.message}</p>
@@ -258,65 +345,50 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
           htmlFor="phone"
           className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
         >
-          رقم الهاتف
+          رقم الهاتف (مع رمز الدولة)
         </label>
         <input
           id="phone"
           type="tel"
           {...register("phone")}
           className="input-field"
-          pattern="[0-9]{8,15}"
           inputMode="tel"
+          placeholder="مثال: +249xxxxxxxxx أو 00249xxxxxxxxx"
         />
         {errors.phone && (
           <p className="error-message">{errors.phone.message}</p>
         )}
       </div>
-      <div>
-        <label
-          htmlFor="photoURL"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          رابط صورة المستخدم (اختياري)
-        </label>
-        <input
-          id="photoURL"
-          type="url"
-          {...register("photoURL")}
-          className="input-field"
-        />
-        {errors.photoURL && (
-          <p className="error-message">{errors.photoURL.message}</p>
-        )}
-      </div>
-      <div>
-        <label
-          htmlFor="password"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          كلمة المرور
-        </label>
-        <div className="flex gap-2">
-          <input
-            id="password"
-            type="text"
-            {...register("password")}
-            className="input-field flex-1"
-            autoComplete="new-password"
-          />
-          <button
-            type="button"
-            className="rounded bg-indigo-500 text-white px-3 py-1 text-xs font-semibold hover:bg-indigo-700 transition-colors"
-            onClick={() => setValue("password", generateEasyPassword(6))}
-            tabIndex={-1}
+      {!initialData && (
+        <div>
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            توليد كلمة مرور
-          </button>
+            كلمة المرور
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="password"
+              type="text"
+              {...register("password")}
+              className="input-field flex-1"
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className="rounded bg-indigo-500 text-white px-3 py-1 text-xs font-semibold hover:bg-indigo-700 transition-colors"
+              onClick={() => setValue("password", generateEasyPassword(8))}
+              tabIndex={-1}
+            >
+              توليد كلمة مرور
+            </button>
+          </div>
+          {errors.password && (
+            <p className="error-message">{errors.password.message}</p>
+          )}
         </div>
-        {errors.password && (
-          <p className="error-message">{errors.password.message}</p>
-        )}
-      </div>
+      )}
       <div>
         <label
           htmlFor="role"
@@ -387,20 +459,134 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
           </div>
         </>
       )}
-      <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Home Country */}
+        <div>
+          <label
+            htmlFor="homeCountry"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
+            الدولة الأصلية
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="ابحث عن الدولة..."
+              value={homeCountrySearch}
+              onFocus={() => setShowHomeDropdown(true)}
+              onBlur={() => setTimeout(() => setShowHomeDropdown(false), 150)}
+              onChange={(e) => {
+                setHomeCountrySearch(e.target.value);
+                setShowHomeDropdown(true);
+              }}
+              className="input-field bg-[var(--background-color)] text-[var(--text-color)] mb-1"
+            />
+            {showHomeDropdown && (
+              <ul className="absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow max-h-40 overflow-y-auto mt-1">
+                {countriesAr
+                  .filter(
+                    (c) =>
+                      c.nameAr.includes(homeCountrySearch) ||
+                      c.nameEn
+                        .toLowerCase()
+                        .includes(homeCountrySearch.toLowerCase())
+                  )
+                  .map((c) => (
+                    <li
+                      key={c.code}
+                      className={`px-3 py-2 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-700`}
+                      onMouseDown={() => {
+                        setSelectedHomeCountry(c);
+                        setHomeCountrySearch(c.nameAr);
+                        setValue("homeCountry", c.nameAr);
+                        setShowHomeDropdown(false);
+                      }}
+                    >
+                      {c.nameAr}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
+          {errors.homeCountry && (
+            <p className="error-message">{errors.homeCountry.message}</p>
+          )}
+        </div>
+        {/* Current Country */}
+        <div>
+          <label
+            htmlFor="currentCountry"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
+            الدولة الحالية
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="ابحث عن الدولة..."
+              value={currentCountrySearch}
+              onFocus={() => setShowCurrentDropdown(true)}
+              onBlur={() =>
+                setTimeout(() => setShowCurrentDropdown(false), 150)
+              }
+              onChange={(e) => {
+                setCurrentCountrySearch(e.target.value);
+                setShowCurrentDropdown(true);
+              }}
+              className="input-field bg-[var(--background-color)] text-[var(--text-color)] mb-1"
+            />
+            {showCurrentDropdown && (
+              <ul className="absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow max-h-40 overflow-y-auto mt-1">
+                {countriesAr
+                  .filter(
+                    (c) =>
+                      c.nameAr.includes(currentCountrySearch) ||
+                      c.nameEn
+                        .toLowerCase()
+                        .includes(currentCountrySearch.toLowerCase())
+                  )
+                  .map((c) => (
+                    <li
+                      key={c.code}
+                      className={`px-3 py-2 cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-700`}
+                      onMouseDown={() => {
+                        setSelectedCurrentCountry(c);
+                        setCurrentCountrySearch(c.nameAr);
+                        setValue("currentCountry", c.nameAr);
+                        setShowCurrentDropdown(false);
+                      }}
+                    >
+                      {c.nameAr}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
+          {errors.currentCountry && (
+            <p className="error-message">{errors.currentCountry.message}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
         <button
           type="button"
           onClick={onCancel}
-          className="mt-2 sm:mt-0 w-full sm:w-auto justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-base font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 dark:focus:ring-offset-gray-800 transition-colors"
+          className="mt-2 btn btn-danger"
         >
           إلغاء
         </button>
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full sm:w-auto justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
+          className="btn btn-primary gradient-accent"
         >
-          {isLoading ? "جاري الإنشاء..." : "إنشاء المستخدم"}
+          {isLoading
+            ? initialData
+              ? "جاري التحديث..."
+              : "جاري الإنشاء..."
+            : initialData
+            ? "تحديث المستخدم"
+            : "إنشاء المستخدم"}
         </button>
       </div>
       <style>{`

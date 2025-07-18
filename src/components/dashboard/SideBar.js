@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
-import ThemeSwitcher from "../ThemeSwitcher";
+// import ThemeSwitcher from "../ThemeSwitcher";
 
 const SideBar = ({ isOpen, onClose, user, onLogout, navigationItems }) => {
   return (
@@ -18,7 +18,7 @@ const SideBar = ({ isOpen, onClose, user, onLogout, navigationItems }) => {
             aria-hidden={!isOpen}
           >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <ThemeSwitcher />
+              {/* <ThemeSwitcher /> */}
             </div>
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -104,14 +104,14 @@ const SideBar = ({ isOpen, onClose, user, onLogout, navigationItems }) => {
       )}
       {/* Desktop Sidebar (static) */}
       <aside
-        className="hidden pt-20 lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:right-0 lg:border-l lg:border-gray-200 dark:lg:border-gray-800 lg:bg-white dark:lg:bg-gray-900 lg:top-0 lg:h-screen lg:z-40"
+        className="hidden  lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:right-0 lg:border-l lg:border-gray-200 dark:lg:border-gray-800 lg:bg-white dark:lg:bg-gray-900 lg:top-0 lg:h-screen lg:z-40"
         style={{
           fontFamily:
             "'Tajawal', 'Cairo', 'Alexandria', 'Amiri', 'DM Serif Text', Tahoma, Arial, sans-serif",
         }}
       >
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <ThemeSwitcher />
+          {/* <ThemeSwitcher /> */}
         </div>
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center">

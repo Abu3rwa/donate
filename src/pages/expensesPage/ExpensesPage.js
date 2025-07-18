@@ -4,6 +4,10 @@ import {
   addExpense,
   updateExpense,
   deleteExpense,
+  getAllExpenseCategories,
+  addExpenseCategory,
+  updateExpenseCategory,
+  deleteExpenseCategory,
 } from "../../services/expensesService";
 import toast from "react-hot-toast";
 import Modal from "../../components/dashboard/Modal";
@@ -14,43 +18,7 @@ import ExpenseTable from "./ExpenseTable";
 import AddExpenseForm from "./AddExpenseForm";
 
 // Default expense categories
-const DEFAULT_CATEGORIES = [
-  {
-    id: "operations",
-    nameAr: "تشغيلية",
-    nameEn: "Operations",
-    description: "مصاريف تشغيلية عامة",
-    active: true,
-  },
-  {
-    id: "purchase",
-    nameAr: "شراء",
-    nameEn: "Purchase",
-    description: "مشتريات ومعدات",
-    active: true,
-  },
-  {
-    id: "salary",
-    nameAr: "راتب",
-    nameEn: "Salary",
-    description: "رواتب وبدلات",
-    active: true,
-  },
-  {
-    id: "donation",
-    nameAr: "تبرع",
-    nameEn: "Donation",
-    description: "تبرعات ومكافآت",
-    active: true,
-  },
-  {
-    id: "other",
-    nameAr: "أخرى",
-    nameEn: "Other",
-    description: "مصاريف أخرى",
-    active: true,
-  },
-];
+// Remove DEFAULT_CATEGORIES
 
 export default function ExpensesPage() {
   // Auth and permissions
@@ -72,7 +40,7 @@ export default function ExpensesPage() {
   const [showCategoryForm, setShowCategoryForm] = useState(false);
 
   // Category management states
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState([]);
   const [editingCategory, setEditingCategory] = useState(null);
   const [categoryForm, setCategoryForm] = useState({
     nameAr: "",
@@ -98,11 +66,33 @@ export default function ExpensesPage() {
     fetchExpenses();
   }, []);
 
+  // Fetch categories from Firestore on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await getAllExpenseCategories();
+        setCategories(data);
+      } catch (err) {
+        toast.error("فشل في تحميل التصنيفات.");
+      }
+    };
+    fetchCategories();
+  }, []);
+
   // Filter expenses based on current filters
   const filteredExpenses = useMemo(() => {
+    // Debug logs
+    console.log("categoryFilter:", categoryFilter);
+    console.log(
+      "expense categories:",
+      expenses.map((e) => e.category)
+    );
+    // Filtering is done by category id (not name)
     return expenses
       .filter((item) =>
-        categoryFilter === "all" ? true : item.category === categoryFilter
+        categoryFilter === "all"
+          ? true
+          : (item.category || "").toLowerCase() === categoryFilter.toLowerCase()
       )
       .filter((item) =>
         statusFilter === "all" ? true : item.status === statusFilter
@@ -136,26 +126,38 @@ export default function ExpensesPage() {
 
   const handleAddEditExpense = async (data) => {
     if (!hasPermission || !hasPermission("manage_finances")) {
-      toast.error("غير مصرح لك بإضافة أو تعديل المصروفات.");
+      toast.error("You are not authorized to add or edit expenses.");
       return;
     }
 
     try {
+      // Remove any File objects from data before sending to Firestore
+      const cleanData = { ...data };
+      if (cleanData.bills && cleanData.bills instanceof File) {
+        delete cleanData.bills;
+      }
+      // If billsUrl is undefined, remove it
+      if (cleanData.billsUrl === undefined) {
+        delete cleanData.billsUrl;
+      }
       if (editExpense) {
-        await updateExpense(editExpense.id, data);
+        await updateExpense(editExpense.id, cleanData);
         setExpenses((prev) =>
-          prev.map((e) => (e.id === editExpense.id ? { ...e, ...data } : e))
+          prev.map((e) =>
+            e.id === editExpense.id ? { ...e, ...cleanData } : e
+          )
         );
-        toast.success("تم تعديل المصروف بنجاح.");
+        toast.success("Expense updated successfully.");
       } else {
-        const newExpense = await addExpense(data);
+        const newExpense = await addExpense(cleanData);
         setExpenses((prev) => [newExpense, ...prev]);
-        toast.success("تمت إضافة المصروف بنجاح.");
+        toast.success("Expense added successfully.");
       }
       setShowAddEdit(false);
       setEditExpense(null);
     } catch (err) {
-      toast.error("حدث خطأ أثناء حفظ المصروف.");
+      console.error("Expense save error:", err);
+      toast.error("An error occurred while saving the expense.");
     }
   };
 
@@ -171,21 +173,34 @@ export default function ExpensesPage() {
 
   // ===== CATEGORY MANAGEMENT FUNCTIONS =====
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!categoryForm.nameAr.trim() || !categoryForm.nameEn.trim()) {
       toast.error("يرجى إدخال اسم التصنيف بالعربية والإنجليزية");
       return;
     }
-
-    const newCategory = {
-      id: Date.now().toString(),
-      ...categoryForm,
+    try {
+      // Clean the data
+      const newCategoryData = {
+        nameAr: categoryForm.nameAr.trim(),
+        nameEn: categoryForm.nameEn.trim(),
+        description: categoryForm.description?.trim() || "",
+        active: !!categoryForm.active,
+        createdBy: user?.uid || null,
     };
-
+      console.log("Adding category:", newCategoryData);
+      const newCategory = await addExpenseCategory(newCategoryData);
     setCategories((prev) => [...prev, newCategory]);
-    setCategoryForm({ nameAr: "", nameEn: "", description: "", active: true });
+      setCategoryForm({
+        nameAr: "",
+        nameEn: "",
+        description: "",
+        active: true,
+      });
     setShowCategoryForm(false);
     toast.success("تم إضافة التصنيف بنجاح");
+    } catch (err) {
+      toast.error("فشل في إضافة التصنيف.");
+    }
   };
 
   const handleEditCategory = (category) => {
@@ -199,28 +214,41 @@ export default function ExpensesPage() {
     setShowCategoryForm(true);
   };
 
-  const handleUpdateCategory = () => {
+  const handleUpdateCategory = async () => {
     if (!categoryForm.nameAr.trim() || !categoryForm.nameEn.trim()) {
       toast.error("يرجى إدخال اسم التصنيف بالعربية والإنجليزية");
       return;
     }
-
+    try {
+      await updateExpenseCategory(editingCategory.id, categoryForm);
     setCategories((prev) =>
       prev.map((cat) =>
         cat.id === editingCategory.id ? { ...cat, ...categoryForm } : cat
       )
     );
-
     setEditingCategory(null);
-    setCategoryForm({ nameAr: "", nameEn: "", description: "", active: true });
+      setCategoryForm({
+        nameAr: "",
+        nameEn: "",
+        description: "",
+        active: true,
+      });
     setShowCategoryForm(false);
     toast.success("تم تحديث التصنيف بنجاح");
+    } catch (err) {
+      toast.error("فشل في تحديث التصنيف.");
+    }
   };
 
-  const handleDeleteCategory = (categoryId) => {
+  const handleDeleteCategory = async (categoryId) => {
     if (window.confirm("هل أنت متأكد من حذف هذا التصنيف؟")) {
+      try {
+        await deleteExpenseCategory(categoryId);
       setCategories((prev) => prev.filter((cat) => cat.id !== categoryId));
       toast.success("تم حذف التصنيف بنجاح");
+      } catch (err) {
+        toast.error("فشل في حذف التصنيف.");
+      }
     }
   };
 
@@ -283,12 +311,14 @@ export default function ExpensesPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         hasPermission={hasPermission}
+        categories={categories}
       />
       <ExpenseTable
         expenses={filteredExpenses}
         onEdit={handleEdit}
         onDelete={handleDelete}
         hasPermission={hasPermission}
+        categories={categories}
       />
     </div>
   );
@@ -395,7 +425,10 @@ export default function ExpensesPage() {
   );
 
   return (
-    <div className="max-w-5xl mx-auto py-6 px-2 sm:px-4 lg:px-0" dir="rtl">
+    <div
+      className="max-w-5xl mx-auto py-6 pb-10 px-2 sm:px-4 lg:px-0"
+      dir="rtl"
+    >
       {/* Header */}
       <header className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -431,7 +464,9 @@ export default function ExpensesPage() {
         setStatusFilter={setStatusFilter}
         search={search}
         setSearch={setSearch}
+        onAdd={handleAddExpense}
         hasPermission={hasPermission}
+        categories={categories}
       />
 
       {/* Main Content */}
@@ -462,6 +497,7 @@ export default function ExpensesPage() {
             setEditExpense(null);
           }}
           user={user}
+          categories={categories}
         />
       </Modal>
 

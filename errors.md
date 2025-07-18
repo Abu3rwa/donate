@@ -1,26 +1,19 @@
-# Error Log: getDonationsForCampaign Not Found
+App.js:144 Warning: React.jsx: type is invalid -- expected a string (for built-in components) or a class/function (for composite components) but got: object. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
 
-**Error:**
+Check your code at App.js:144. Error Component Stack
+at AppContent (App.js:98:1)
+at OrganizationInfoProvider (OrganizationInfoContext.js:6:1)
+at NotificationProvider (NotificationContext.js:16:1)
+at AuthProvider (AuthContext.js:109:1)
+at ThemeProvider (ThemeContext.js:32:1)
+at LanguageProvider (LanguageContext.js:139:1)
 
-```
-export 'getDonationsForCampaign' (imported as 'getDonationsForCampaign') was not found in '../../services/donationsService'
-```
+App.js:144 Warning: React.jsx: type is invalid -- expected a string (for built-in components) or a class/function (for composite components) but got: object. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
 
-**Cause:**
-
-- The code is trying to import a function named `getDonationsForCampaign` from `src/services/donationsService.js`, but this function does not exist or is not exported from that file.
-
-**Solution:**
-
-- Implement a function called `getDonationsForCampaign` in `donationsService.js` that fetches all donations for a given campaign (by campaignId), and export it.
-- Alternatively, use an existing function (such as `fetchDonations`) and filter the results by campaign in your component.
-
-**Action Steps:**
-
-1. Check if `getDonationsForCampaign` exists in `donationsService.js`.
-2. If not, add and export it.
-3. Update imports and usage in your components as needed.
-
----
-
-This log entry documents the error and its resolution for future reference.
+Check your code at App.js:144. Error Component Stack
+at AppContent (App.js:98:1)
+at OrganizationInfoProvider (OrganizationInfoContext.js:6:1)
+at NotificationProvider (NotificationContext.js:16:1)
+at AuthProvider (AuthContext.js:109:1)
+at ThemeProvider (ThemeContext.js:32:1)
+at LanguageProvider (LanguageContext.js:139:1)

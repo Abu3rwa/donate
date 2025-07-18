@@ -172,7 +172,7 @@ const ALL_ACTIONS = [
   },
   {
     name: "الإعدادات",
-    permission: "super_admin_only",
+    permission: "super_admin",
     link: "/dashboard/settings",
     icon: (
       <svg
@@ -285,9 +285,9 @@ const QuickActions = ({
 
   return (
     <div>
-      {/* Main Quick Actions as a horizontal row, compact and responsive */}
+      {/* Main Quick Actions as a responsive grid, card style */}
       <div
-        className="flex flex-row flex-wrap gap-2 xs:gap-3 sm:gap-4 justify-start items-stretch"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6"
         style={{
           fontFamily:
             "'Tajawal', 'Cairo', 'Alexandria', 'Amiri', 'DM Serif Text', Tahoma, Arial, sans-serif",
@@ -295,28 +295,33 @@ const QuickActions = ({
       >
         {actions.map((action) => {
           const permitted = hasPermissionForAction(action);
-          // Use disabled color if not permitted, else use action color
           const colorClass = permitted
             ? getColorClasses(action.color)
             : getDisabledColorClasses();
+          const commonProps = {
+            className: `flex flex-col items-center justify-center w-full min-h-[110px] px-2 py-4 rounded-2xl shadow-md transition-all duration-200 text-sm sm:text-base ${colorClass} ${
+              !permitted
+                ? "opacity-70 pointer-events-none"
+                : "hover:scale-105 hover:shadow-lg"
+            }`,
+            style: { cursor: permitted ? "pointer" : "not-allowed" },
+            tabIndex: permitted ? 0 : -1,
+            "aria-disabled": !permitted,
+          };
+
           if (action.link) {
             return (
               <Link
                 key={action.name}
                 to={permitted ? action.link : "#"}
-                className={`flex flex-col items-center justify-center w-auto min-w-[90px] px-2 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-5 rounded-xl sm:rounded-2xl shadow transition-colors duration-200 text-xs xs:text-sm sm:text-base ${colorClass} ${
-                  !permitted ? "opacity-70 pointer-events-none" : ""
-                }`}
-                style={{ flex: "0 0 auto", minHeight: "90px" }}
-                tabIndex={permitted ? 0 : -1}
-                aria-disabled={!permitted}
+                {...commonProps}
               >
-                <div className="mb-1 sm:mb-2">
+                <div className="mb-2">
                   {React.cloneElement(action.icon, {
                     className: "w-10 h-10 xs:w-12 xs:h-12",
                   })}
                 </div>
-                <span className="font-semibold  text-center leading-tight">
+                <span className="font-semibold text-center leading-tight">
                   {action.name}
                   {!permitted && (
                     <span className="block text-xs text-red-800 mt-1 font-bold">
@@ -332,11 +337,10 @@ const QuickActions = ({
                 key={action.name}
                 type="button"
                 onClick={getActionHandler(action)}
-                className={`flex flex-col items-center justify-center w-auto min-w-[90px] px-2 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-5 rounded-xl sm:rounded-2xl shadow transition-colors duration-200 text-xs xs:text-sm sm:text-base ${colorClass}`}
-                style={{ flex: "0 0 auto", minHeight: "90px" }}
+                {...commonProps}
                 disabled={!permitted}
               >
-                <div className="mb-1 sm:mb-2">
+                <div className="mb-2">
                   {React.cloneElement(action.icon, {
                     className: "w-10 h-10 xs:w-12 xs:h-12",
                   })}

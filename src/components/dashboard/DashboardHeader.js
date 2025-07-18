@@ -1,8 +1,15 @@
-import React from "react";
-import { useOrganizationInfo } from "../../contexts/OrganizationInfoContext";
+import React, { useState, useEffect } from "react";
+import { getOrgInfo } from "../../services/orgInfoService";
 
 const DashboardHeader = ({ user }) => {
-  const { orgInfo } = useOrganizationInfo();
+  const [orgInfo, setOrgInfo] = useState({});
+  useEffect(() => {
+    const fetchOrg = async () => {
+      const info = await getOrgInfo();
+      setOrgInfo(info || {});
+    };
+    fetchOrg();
+  }, []);
   return (
     <header
       style={{

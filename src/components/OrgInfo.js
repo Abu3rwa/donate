@@ -16,6 +16,7 @@ const OrgInfo = ({ orgInfo, showLogo = true, className = "" }) => {
   const phones = orgInfo.contacts?.phones || [];
   const emails = orgInfo.contacts?.emails || [];
   const socials = orgInfo.social || [];
+  const videos = orgInfo.videos || [];
 
   return (
     <div className={`receipt-section-box ${className}`} dir="rtl">
@@ -246,6 +247,51 @@ const OrgInfo = ({ orgInfo, showLogo = true, className = "" }) => {
                 >
                   {s.name}
                 </a>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Videos Section */}
+        {videos.length > 0 && (
+          <div
+            className="item"
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            <div
+              className="receipt-section-title"
+              style={{
+                fontSize: "1.25rem",
+                fontWeight: 700,
+                color: "#198754",
+                marginBottom: 10,
+                padding: "0 0 8px 0",
+                borderBottom: "2px solid #198754",
+              }}
+            >
+              مقاطع الفيديو
+            </div>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+            >
+              {videos.map((video, i) => (
+                <div
+                  key={i}
+                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                >
+                  <a
+                    href={video.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="receipt-link"
+                    style={{
+                      color: "#198754",
+                      textDecoration: "none",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {video.title || video.url}
+                  </a>
+                </div>
               ))}
             </div>
           </div>

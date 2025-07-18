@@ -116,16 +116,9 @@ export const AuthProvider = ({ children }) => {
       try {
         // Check if auth object exists
         if (!auth) {
-          console.warn("⚠️ Firebase Auth not available");
           setLoading(false);
           return;
         }
-
-        console.log("✅ Firebase Auth object:", auth);
-        console.log("✅ Firebase Auth methods available:", {
-          signInWithEmailAndPassword: typeof auth.signInWithEmailAndPassword,
-          onAuthStateChanged: typeof onAuthStateChanged,
-        });
 
         // Test Firebase Auth connection
         const unsubscribe = onAuthStateChanged(
@@ -143,13 +136,8 @@ export const AuthProvider = ({ children }) => {
                     ...firebaseUser,
                     ...userData,
                   };
-                  console.log("AuthContext merged user:", mergedUser);
                   setUser(mergedUser);
                 } else {
-                  console.log(
-                    "AuthContext firebaseUser (no Firestore doc):",
-                    firebaseUser
-                  );
                   setUser(firebaseUser);
                 }
               } catch (error) {

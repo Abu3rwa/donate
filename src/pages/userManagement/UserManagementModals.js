@@ -1,6 +1,14 @@
 import React from "react";
 import AddUserForm from "./AddUserForm";
-import { Trash2, Users, Mail, Shield, X, Check, AlertCircle } from "lucide-react";
+import {
+  Trash2,
+  Users,
+  Mail,
+  Shield,
+  X,
+  Check,
+  AlertCircle,
+} from "lucide-react";
 import { ADMIN_PERMISSIONS, ADMIN_TYPES } from "../../contexts/AuthContext";
 import PERMISSIONS_AR from "../../helpers/permissionsMap";
 import {
@@ -34,9 +42,7 @@ export const UserManagementModals = ({
   currentUser,
   promoteToAdmin,
   demoteFromAdmin,
-  auth,
 }) => {
-
   const handleRoleChangeAdminType = (e) => {
     const adminType = e.target.value;
     setRoleChangeForm((prev) => ({
@@ -45,7 +51,9 @@ export const UserManagementModals = ({
       permissions:
         adminType === ADMIN_TYPES.SUPER_ADMIN
           ? ["all"]
-          : ADMIN_PERMISSIONS[adminType]?.permissions?.filter((p) => p !== "all") || [],
+          : ADMIN_PERMISSIONS[adminType]?.permissions?.filter(
+              (p) => p !== "all"
+            ) || [],
     }));
   };
 
@@ -68,7 +76,7 @@ export const UserManagementModals = ({
         await demoteFromAdmin(user.id || user.uid);
         setUsers((prev) =>
           prev.map((u) =>
-            (u.id === user.id || u.uid === user.uid)
+            u.id === user.id || u.uid === user.uid
               ? { ...u, adminType: null, role: "مستخدم", permissions: [] }
               : u
           )
@@ -78,7 +86,7 @@ export const UserManagementModals = ({
         await promoteToAdmin(user.id || user.uid, adminType, permissions);
         setUsers((prev) =>
           prev.map((u) =>
-            (u.id === user.id || u.uid === user.uid)
+            u.id === user.id || u.uid === user.uid
               ? {
                   ...u,
                   adminType,
@@ -102,7 +110,12 @@ export const UserManagementModals = ({
         "error"
       );
     } finally {
-      setRoleChangeModal({ open: false, user: null, direction: null, loading: false }); // Reset loading state
+      setRoleChangeModal({
+        open: false,
+        user: null,
+        direction: null,
+        loading: false,
+      }); // Reset loading state
       setRoleChangeForm({ adminType: "", permissions: [] });
     }
   };
@@ -139,13 +152,14 @@ export const UserManagementModals = ({
               </h3>
             </div>
             <p className="text-[var(--text-secondary)] mb-6">
-              هل أنت متأكد من حذف المستخدم "{deleteConfirm.displayName || deleteConfirm.name}"؟ لا يمكن
+              هل أنت متأكد من حذف المستخدم "
+              {deleteConfirm.displayName || deleteConfirm.name}"؟ لا يمكن
               التراجع عن هذا الإجراء.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 py-2 px-4 border border-[var(--divider)] rounded-lg text-[var(--text-secondary)] hover:bg-[var(--background-color)] transition-colors"
+                className="close-btn"
               >
                 إلغاء
               </button>
@@ -165,14 +179,20 @@ export const UserManagementModals = ({
       {showPermissions.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="bg-[var(--paper-color)] rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
-            <h2 className="text-lg font-bold mb-4 text-[var(--text-primary)]">صلاحي��ت المستخدم</h2>
+            <h2 className="text-lg font-bold mb-4 text-[var(--text-primary)]">
+              صلاحي��ت المستخدم
+            </h2>
             <div className="mb-4">
               <div className="font-medium text-[var(--text-secondary)] mb-2">
-                {showPermissions.user.displayName || showPermissions.user.name || "—"}
+                {showPermissions.user.displayName ||
+                  showPermissions.user.name ||
+                  "—"}
               </div>
               <div className="text-xs text-[var(--text-secondary)] mb-2">
                 الدور:{" "}
-                {showPermissions.user.role || showPermissions.user.adminType || "—"}
+                {showPermissions.user.role ||
+                  showPermissions.user.adminType ||
+                  "—"}
               </div>
             </div>
             <ul className="list-disc pr-6 text-sm text-[var(--text-primary)]">
@@ -180,7 +200,8 @@ export const UserManagementModals = ({
               showPermissions.user.permissions.length > 0
                 ? showPermissions.user.permissions
                 : (showPermissions.user.adminType &&
-                    ADMIN_PERMISSIONS[showPermissions.user.adminType]?.permissions) ||
+                    ADMIN_PERMISSIONS[showPermissions.user.adminType]
+                      ?.permissions) ||
                   []
               ).map((perm, idx) => (
                 <li key={idx}>{PERMISSIONS_AR[perm] || perm}</li>

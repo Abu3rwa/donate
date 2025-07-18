@@ -13,10 +13,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { useTheme } from "./contexts/ThemeContext";
 
 // Import components
-import ThemeSwitcher from "./components/ThemeSwitcher";
 import Layout from "./components/Layout/Layout";
-
-
 
 // Import pages
 import HomePage from "./pages/HomePage";
@@ -25,6 +22,7 @@ import CampaignsPage from "./pages/campaignsPage/CampaignsPage";
 import StoriesPage from "./pages/StoriesPage";
 import DonationsPage from "./pages/donationsPage/DonationsPage";
 import VolunteerPage from "./pages/VolunteerPage";
+import CampaignDetailsPage from "./pages/compaign-details/CampaignDetailsPage";
 import ImpactPage from "./pages/ImpactPage";
 import ContactPage from "./pages/ContactPage";
 import MapPage from "./pages/MapPage";
@@ -32,7 +30,6 @@ import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import NotFoundPage from "./pages/NotFoundPage";
-import AdminFixPage from "./pages/AdminFixPage";
 import DebugPage from "./pages/DebugPage";
 // import OrganizationInfoPage from "./pages/OrganizationInfoPage";
 
@@ -48,14 +45,19 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider as ContextThemeProvider } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
-import {
-  OrganizationInfoProvider,
-  useOrganizationInfo,
-} from "./contexts/OrganizationInfoContext";
+// Removed OrganizationInfoProvider and useOrganizationInfo
 
 // Import constants
 
 import { toastOptions } from "./theme/theme";
+import HomeNavigation from "./pages/home/HomeNavigation";
+import HomeFooter from "./pages/home/HomeFooter";
+import SettingsPage from "./pages/setting/SettingsPage";
+import OrganizationInfoPage from "./pages/OrganizationInfoPage";
+import VisitorDonationsPage from "./pages/visitor-donations-page/VisitorDonationsPage";
+import NonMemberDonatePage from "./pages/visitor-donations-page/NonMemberDonatePage";
+
+import AddUserForm from "./pages/userManagement/AddUserForm";
 
 // Import theme exports
 
@@ -79,11 +81,9 @@ function App() {
           <ContextThemeProvider>
             <AuthProvider>
               <NotificationProvider>
-                <OrganizationInfoProvider>
-                  <Router>
-                    <AppContent />
-                  </Router>
-                </OrganizationInfoProvider>
+                <Router>
+                  <AppContent />
+                </Router>
               </NotificationProvider>
             </AuthProvider>
           </ContextThemeProvider>
@@ -99,37 +99,36 @@ function AppContent() {
   const theme = getCurrentTheme();
   const location = useLocation();
   const isDashboard = location.pathname.startsWith("/dashboard");
-  const { orgInfo } = useOrganizationInfo();
 
-  React.useEffect(() => {
-    if (orgInfo) {
-      document.title = orgInfo.name || "";
-      const metaDesc = document.querySelector('meta[name="description"]');
-      if (metaDesc) {
-        metaDesc.setAttribute("content", orgInfo.description || "");
-      }
-    }
-  }, [orgInfo]);
+  // If you need orgInfo here, fetch it using getOrgInfo and local state as in other components.
 
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <div className="App min-h-screen bg-[var(--background-color)]">
-        {!isDashboard && <ThemeSwitcher />}
-        
+      {!isDashboard && <HomeNavigation />}
 
+      {/* <CssBaseline /> */}
+      <div className="App min-h-screen bg-[var(--background-color)]">
         <Layout>
           <Routes>
-            {/* <Route path="/organization" element={<OrganizationInfoPage />} /> */}
+            <Route path="/organization" element={<OrganizationInfoPage />} />
             <Route path="/" element={<HomePage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/campaigns" element={<CampaignsPage />} />
             <Route path="/stories" element={<StoriesPage />} />
-            <Route path="/donations" element={<DonationsPage />} />
+            <Route path="/compaigns/:id" element={<CampaignDetailsPage />} />
             <Route path="/volunteer" element={<VolunteerPage />} />
             <Route path="/impact" element={<ImpactPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/map" element={<MapPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+
+            <Route
+              path="/visitor-donations"
+              element={<VisitorDonationsPage />}
+            />
+
+            {/* <Route path="/settings" element={<Organiza />} /> */}
+
             <Route
               path="/dashboard/*"
               element={
@@ -139,19 +138,20 @@ function AppContent() {
               }
             >
               <Route index element={<DashboardPage />} />
+              <Route path="add-user" element={<AddUserForm />} />
               {/* <Route path="users" element={<UsersManagement />} /> */}
             </Route>
-            <Route path="/admin-fix" element={<AdminFixPage />} />
             <Route path="/debug" element={<DebugPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/donate" element={<NonMemberDonatePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Layout>
-        
+
         {/* Toast Notifications */}
         <Toaster position="top-right" toastOptions={toastOptions} />
       </div>
+      {!isDashboard && <HomeFooter />}
     </ThemeProvider>
   );
 }

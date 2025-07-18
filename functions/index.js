@@ -1,113 +1,218 @@
-/**
- * Firebase Cloud Function to allow an admin to create a new user.
- *
- * This function performs the following steps:
- * 1.  Authenticates the request to ensure the caller is logged in.
- * 2.  Authorizes the caller by checking if they are a 'super_admin'.
- * 3.  Validates the input data (email, password, displayName).
- * 4.  Creates a new user in Firebase Authentication.
- * 5.  Creates a corresponding user document in the 'users' collection in Firestore.
- * 6.  Returns the UID of the newly created user.
- */
-const functions = require("firebase-functions");
+const { onCall } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
-
-// Initialize the Firebase Admin SDK.
-// This is required to interact with Firebase services from the backend.
 admin.initializeApp();
+const sendCredentialsEmail = require("./sendCredentialsEmail");
 
-exports.createUserByAdmin = functions.https.onCall(async (data, context) => {
-  // --- 1. Authentication Check ---
-  // The `context.auth` object is automatically populated by Firebase if the
-  // client-side call is made by an authenticated user. If it's missing,
-  // the user is not logged in.
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "You must be logged in to create a user."
-    );
+exports.createUserByAdmin = onCall(async (request) => {
+  console.log("request", request);
+  // 1. Authentication check
+  if (!request.auth) {
+    throw new Error("You must be logged in to create a user.");
   }
 
-  // --- 2. Permission/Authorization Check ---
-  // We verify that the user making the call has the 'super_admin' role.
-  // We fetch their user document from Firestore using their UID from the auth context.
-  try {
-    const adminUserDoc = await admin
-      .firestore()
-      .collection("users")
-      .doc(context.auth.uid)
-      .get();
-
-    if (!adminUserDoc.exists || adminUserDoc.data().adminType !== "super_admin") {
-      throw new functions.https.HttpsError(
-        "permission-denied",
-        "You do not have the required permissions to create a user."
-      );
-    }
-  } catch (error) {
-    console.error("Permission check failed:", error);
-    throw new functions.https.HttpsError(
-        "internal", 
-        "An error occurred while verifying your permissions."
-    );
+  // 2. Authorization check
+  const adminDoc = await admin
+    .firestore()
+    .collection("users")
+    .doc(request.auth.uid)
+    .get();
+  if (!adminDoc.exists || adminDoc.data().adminType !== "super_admin") {
+    throw new Error("Only super admins can create users.");
   }
+  console.log("adminDoc", adminDoc);
 
-
-  // --- 3. Input Validation ---
-  // Ensure the client sent all the necessary information.
-  const { email, password, displayName } = data;
-  if (!email || !password || !displayName) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "The function must be called with 'email', 'password', and 'displayName' arguments."
-    );
+  // 3. Input validation
+  const {
+    displayName,
+    email,
+    password,
+    role,
+    adminType,
+    permissions,
+    phone,
+    homeCountry,
+    currentCountry,
+  } = request.data;
+  if (!displayName || !email || !password || !role) {
+    throw new Error("Missing required fields.");
+  }
+  if (password.length < 6) {
+    throw new Error("Password must be at least 6 characters.");
   }
 
   try {
-    // --- 4. Create User in Firebase Authentication ---
-    // This creates the user in the Firebase Authentication service, which allows them to log in.
+    // 4. Create user in Firebase Auth
     const userRecord = await admin.auth().createUser({
-      email: email,
-      password: password,
-      displayName: displayName,
-      emailVerified: false, // You can set this to true if you have a verification flow
+      email,
+      password,
+      displayName,
+      emailVerified: false,
     });
 
-    // --- 5. Create User Document in Firestore ---
-    // Now, we create a corresponding document in the 'users' collection.
-    // We take all the data passed from the client form.
+    // 5. Create user document in Firestore
     const userProfile = {
-      ...data, // This includes firstName, lastName, phone, role, adminType, etc.
-      uid: userRecord.uid, // Add the newly created UID
-      createdAt: admin.firestore.FieldValue.serverTimestamp(), // Use server timestamp for accuracy
-      lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      displayName,
+      email,
+      phone: phone || "",
+      homeCountry: homeCountry || "",
+      currentCountry: currentCountry || "",
+      role,
+      adminType: adminType || null,
+      permissions: permissions || [],
+      isActive: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: request.auth.uid,
     };
+    await admin
+      .firestore()
+      .collection("users")
+      .doc(userRecord.uid)
+      .set(userProfile);
 
-    // IMPORTANT: Never store the plain text password in your database.
-    // Remove it from the profile object before saving to Firestore.
-    delete userProfile.password;
+    // 6. Send credentials email to the new user
+    await sendCredentialsEmail({
+      to: email,
+      displayName,
+      email,
+      password,
+      role,
+      permissions: permissions || [],
+    });
 
-    // Set the document in the 'users' collection with the user's UID as the document ID.
-    await admin.firestore().collection("users").doc(userRecord.uid).set(userProfile);
-
-    // --- 6. Return Success Response ---
-    // Send the new user's UID back to the client.
-    console.log(`Successfully created new user: ${displayName} (${userRecord.uid})`);
-    return { uid: userRecord.uid };
-
+    return {
+      uid: userRecord.uid,
+      email: userRecord.email,
+      displayName: userRecord.displayName,
+    };
   } catch (error) {
-    // --- 7. Error Handling ---
-    console.error("Error creating user:", error);
-
-    // Provide a more specific error message if it's a known auth error code.
-    if (error.code === 'auth/email-already-exists') {
-        throw new functions.https.HttpsError('already-exists', 'The email address is already in use by another account.');
+    if (error.code === "auth/email-already-exists") {
+      throw new Error("Email already in use.");
     }
-    if (error.code === 'auth/invalid-password') {
-        throw new functions.https.HttpsError('invalid-argument', 'The password must be a string with at least 6 characters.');
-    }
+    throw new Error(error.message || "Failed to create user.");
+  }
+});
 
-    // For other errors, throw a generic 'internal' error to avoid leaking details.
-    throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the user.");
+exports.resetPasswordByAdmin = onCall(async (request) => {
+  // 1. Authentication check
+  if (!request.auth) {
+    throw new Error("You must be logged in to reset a password.");
+  }
+
+  // 2. Authorization check
+  const adminDoc = await admin
+    .firestore()
+    .collection("users")
+    .doc(request.auth.uid)
+    .get();
+  if (!adminDoc.exists || adminDoc.data().adminType !== "super_admin") {
+    throw new Error("Only super admins can reset passwords.");
+  }
+
+  // 3. Input validation
+  const { userId, newPassword } = request.data;
+  if (!userId || !newPassword) {
+    throw new Error("Missing required fields: userId and newPassword.");
+  }
+  if (newPassword.length < 6) {
+    throw new Error("Password must be at least 6 characters.");
+  }
+
+  try {
+    await admin.auth().updateUser(userId, { password: newPassword });
+    return { success: true, message: "Password reset successfully." };
+  } catch (error) {
+    throw new Error(error.message || "Failed to reset password.");
+  }
+});
+
+exports.signOutUserByAdmin = onCall(async (request) => {
+  // 1. Authentication check
+  if (!request.auth) {
+    throw new Error("You must be logged in to sign out a user.");
+  }
+
+  // 2. Authorization check
+  const adminDoc = await admin
+    .firestore()
+    .collection("users")
+    .doc(request.auth.uid)
+    .get();
+  if (!adminDoc.exists || adminDoc.data().adminType !== "super_admin") {
+    throw new Error("Only super admins can sign out users.");
+  }
+
+  // 3. Input validation
+  const { userId } = request.data;
+  if (!userId) {
+    throw new Error("Missing required field: userId.");
+  }
+
+  try {
+    await admin.auth().revokeRefreshTokens(userId);
+    return {
+      success: true,
+      message: "User signed out successfully (tokens revoked).",
+    };
+  } catch (error) {
+    throw new Error(error.message || "Failed to sign out user.");
+  }
+});
+
+exports.sendPasswordResetEmailByAdmin = onCall(async (request) => {
+  if (!request.auth) {
+    throw new Error("You must be logged in to send a password reset email.");
+  }
+  const adminDoc = await admin
+    .firestore()
+    .collection("users")
+    .doc(request.auth.uid)
+    .get();
+  if (!adminDoc.exists || adminDoc.data().adminType !== "super_admin") {
+    throw new Error("Only super admins can send password reset emails.");
+  }
+  const { email } = request.data;
+  if (!email) {
+    throw new Error("Missing required field: email.");
+  }
+  try {
+    const link = await admin.auth().generatePasswordResetLink(email);
+    // Option 1: Return the link to the admin to copy/send
+    return { success: true, link };
+    // Option 2: Use a mail service to send the link directly to the user
+  } catch (error) {
+    throw new Error(error.message || "Failed to generate password reset link.");
+  }
+});
+
+exports.deleteUserByAdmin = onCall(async (request) => {
+  // 1. Authentication check
+  if (!request.auth) {
+    throw new Error("You must be logged in to delete a user.");
+  }
+
+  // 2. Authorization check
+  const adminDoc = await admin
+    .firestore()
+    .collection("users")
+    .doc(request.auth.uid)
+    .get();
+  if (!adminDoc.exists || adminDoc.data().adminType !== "super_admin") {
+    throw new Error("Only super admins can delete users.");
+  }
+
+  // 3. Input validation
+  const { userId } = request.data;
+  if (!userId) {
+    throw new Error("Missing required field: userId.");
+  }
+
+  try {
+    // 4. Delete user from Firebase Auth
+    await admin.auth().deleteUser(userId);
+    // 5. Delete user document from Firestore
+    await admin.firestore().collection("users").doc(userId).delete();
+    return { success: true, message: "User deleted successfully." };
+  } catch (error) {
+    throw new Error(error.message || "Failed to delete user.");
   }
 });
