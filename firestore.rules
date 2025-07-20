@@ -19,6 +19,11 @@ service cloud.firestore {
     function isSuperAdmin() {
       return isSignedIn() && getUserData(request.auth.uid).adminType == "super_admin";
     }
+     // Check if the signed-in user has the 'super_admin' role.
+    function isWebsiteManger() {
+      return isSignedIn() && getUserData(request.auth.uid).adminType == "website_admin";
+    }
+    
 
     // Check if the signed-in user has the 'admin' role.
     function isAdmin() {
@@ -156,6 +161,13 @@ service cloud.firestore {
     match /communications/{communicationId} {
         allow read: if true;
         allow write: if isSuperAdmin() || isCommunicationManager();
+    }
+    // Org Files Collection:
+    // - Publicly readable.
+    // - Writable by Super Admins and Website Admins only.
+    match /organization_documents/{docId} {
+      allow read: if true;
+      allow write: if isSuperAdmin() || isWebsiteManger();
     }
   }
     match /databases/{database}/documents {

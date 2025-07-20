@@ -17,6 +17,7 @@ import DonationsPage from "../../pages/donationsPage/DonationsPage";
 import OrganizationInfoPage from "../../pages/OrganizationInfoPage";
 import SettingsPage from "../../pages/setting/SettingsPage";
 import BottomNav from "./BottomNav";
+import OrganizationDocuments from "../../pages/organization-documents/OrganizationDocuments";
 import DashboardOverview from "./DashboardOverview";
 // import UsersManagement from "./UsersManagement";
 
@@ -190,6 +191,10 @@ const DashboardLayout = () => {
             <Route path="users" element={<UserManagementPage />} />
             <Route path="expenses" element={<ExpensesPage />} />
             <Route path="donations" element={<DonationsPage />} />
+            <Route
+              path="organization-documents"
+              element={<OrganizationDocuments />}
+            />
             <Route
               path="organisation-info"
               element={<OrganizationInfoPage />}

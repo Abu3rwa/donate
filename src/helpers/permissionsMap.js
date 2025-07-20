@@ -15,6 +15,7 @@ const PERMISSIONS_AR = {
   manage_communications: "إدارة التواصل",
   view_communication_reports: "عرض تقارير التواصل",
   website_admin: "إدارة الموقع",
+  view_org_docs: "عرض ملفات المنظمة",
 };
 
 export default PERMISSIONS_AR;

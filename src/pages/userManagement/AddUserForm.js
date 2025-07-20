@@ -264,13 +264,13 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
     }
   }, [memberOfficeRole, role, setValue]);
 
-  // All unique permissions
+  // All unique permissions (ensure all are included, even new ones)
   const allPermissions = Array.from(
     new Set([
-      "all",
       ...Object.values(ADMIN_PERMISSIONS).flatMap((p) => p.permissions),
+      // Add any extra permissions not in admin types here if needed
     ])
-  );
+  ).sort(); // Sort for consistent display
 
   const [homeCountrySearch, setHomeCountrySearch] = useState("السودان");
   const [currentCountrySearch, setCurrentCountrySearch] = useState("");
@@ -582,7 +582,7 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
         {errors.role && <p className="error-message">{errors.role.message}</p>}
       </div>
       {role === "مسؤول" && (
-          <div>
+        <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             الدور في المكتب التنفيذي
           </label>
@@ -605,55 +605,56 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             نوع المسؤول (للصلاحيات)
-            </label>
-            <select
-              id="adminType"
+          </label>
+          <select
+            id="adminType"
             value={adminType}
             onChange={(e) => {
               setAdminType(e.target.value);
               setValue("adminType", e.target.value);
             }}
-              className="input-field text-center"
-            >
-              <option value="">اختر نوع المسؤول...</option>
+            className="input-field text-center"
+          >
+            <option value="">اختر نوع المسؤول...</option>
             {adminTypeOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
-                </option>
-              ))}
-            </select>
-            {errors.adminType && (
-              <p className="error-message">{errors.adminType.message}</p>
-            )}
-          </div>
+              </option>
+            ))}
+          </select>
+          {errors.adminType && (
+            <p className="error-message">{errors.adminType.message}</p>
+          )}
+        </div>
       )}
-          {role === "مسؤول" && adminType && (
-          <div className="mt-4">
-            <label className="block text-sm font-medium mb-2 text-[var(--text-secondary)]">
-              الصلاحيات
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {allPermissions.map((perm) => (
-                <label key={perm} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                      checked={
+      {role === "مسؤول" && adminType && (
+        <div className="mt-4">
+          <label className="block text-sm font-medium mb-2 text-[var(--text-secondary)]">
+            الصلاحيات
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {allPermissions.map((perm) => (
+              <label key={perm} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={
                     permissions.includes("all") || permissions.includes(perm)
-                      }
-                    onChange={(e) => {
+                  }
+                  onChange={(e) => {
                     if (permissions.includes("all")) return;
-                      if (e.target.checked) {
-                        setPermissions((prev) => [...prev, perm]);
-                      } else {
+                    if (e.target.checked) {
+                      setPermissions((prev) => [...prev, perm]);
+                    } else {
                       setPermissions((prev) => prev.filter((p) => p !== perm));
-                      }
-                    }}
+                    }
+                  }}
                   disabled={permissions.includes("all")}
-                  />
-                  {PERMISSIONS_AR[perm] || perm}
-                </label>
-              ))}
-            </div>
+                />
+                {/* Show Arabic label if available, otherwise show the key */}
+                {PERMISSIONS_AR[perm] || perm}
+              </label>
+            ))}
+          </div>
           {permissions.includes("all") && (
             <div className="mt-4 text-green-700 font-semibold">
               كل الصلاحيات متاحة لهذا المستخدم (صلاحيات كاملة)

@@ -3,27 +3,6 @@ import { Link } from "react-router-dom";
 
 const ALL_ACTIONS = [
   {
-    name: "إضافة تبرع جديد",
-    permission: "manage_donations",
-    onClickKey: "onAddDonation",
-    icon: (
-      <svg
-        className="w-8 h-8"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-        />
-      </svg>
-    ),
-    color: "primary",
-  },
-  {
     name: "إدارة التبرعات",
     permission: "manage_donations",
     link: "/dashboard/donations",
@@ -211,6 +190,33 @@ const ALL_ACTIONS = [
       </svg>
     ),
     color: "indigo",
+  },
+  {
+    name: "ملفات المنظمة",
+    permission: "manage_users", // All admins have this or 'all'
+    link: "/dashboard/organization-documents",
+    icon: (
+      <svg
+        className="w-8 h-8"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M3 7a2 2 0 012-2h6a2 2 0 012 2v2h6a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M16 3v4a1 1 0 001 1h4"
+        />
+      </svg>
+    ),
+    color: "sky",
   },
 ];
 

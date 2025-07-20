@@ -1,11 +1,3 @@
-# AI Coding Editor Power Prompt
-
-Use this prompt to get the most out of any AI coding editor. Paste it as your initial instruction to the AI:
-
----
-
-**Prompt:**
-
 > You are an expert AI coding assistant. When I give you a coding task, you will:
 >
 > 1. **Analyze** my code and requirements deeply before acting.
@@ -21,17 +13,54 @@ Use this prompt to get the most out of any AI coding editor. Paste it as your in
 >
 > When I give you a new task, start executing immediately, and keep me updated on progress and next steps.
 > here is the task {
+> Refactor and modularize the OrganizationDocuments.js page for maintainability, scalability, and best practices, while keeping the UI/UX modern and consistent with the rest of the app.
+
+1. Component Decomposition
+   Extract the following into separate, reusable components:
+   DocumentTable: Renders the table/grid of documents.
+   DocumentCard: For card/grid view on mobile or as a reusable file card.
+   UploadBar: Handles file input, category selection, and upload button.
+   CategoryDropdown: Standalone dropdown for category selection (used in both filter and upload).
+   SearchBar: For searching/filtering files.
+   EmptyState: For when there are no files.
+   LoadingSpinner: For loading state.
+   DeleteConfirmModal: For confirming file deletion.
+   FileTypeIcon: Renders an icon based on file extension/type.
+2. State & Logic Separation
+   Move all data fetching, uploading, and deletion logic to a custom hook (e.g., useOrgDocuments).
+   Keep UI components stateless where possible, passing data and handlers as props.
+3. Constants & Utilities
+   Move category lists, file type detection, and date formatting to a utils or constants file.
+   Localize all category names and UI strings for easy translation.
+4. Styling
+   Use a CSS module or Tailwind classes for each component.
+   Ensure all components are RTL-friendly and accessible.
+5. Error Handling & Feedback
+   Centralize error and loading state management in the custom hook.
+   Show user-friendly error messages and success toasts.
+6. Extensibility
+   Make it easy to add new features (e.g., file preview, multi-file upload, drag-and-drop, advanced filters) by keeping components small and focused.
+7. Testing
+   Write unit tests for utility functions and custom hooks.
+   Add integration tests for upload, delete, and filter flows.
+   Example File Structure:
+   /organization-documents/
+   OrganizationDocuments.js
+   components/
+   DocumentTable.js
+   DocumentCard.js
+   UploadBar.js
+   CategoryDropdown.js
+   SearchBar.js
+   EmptyState.js
+   LoadingSpinner.js
+   DeleteConfirmModal.js
+   FileTypeIcon.js
+   hooks/
+   useOrgDocuments.js
+   utils/
+   categories.js
+   fileUtils.js
+   dateUtils.js
 
 ## }
-
-**How to use:**
-
-- Paste this prompt as your first message to the AI coding editor.
-- For each new coding task, simply describe what you want, and the AI will follow this workflow.
-- You can ask for explanations, code reviews, or further improvements at any time.
-
----
-
-**Tip:**
-
-- Save this file for quick reference and reuse in any project!

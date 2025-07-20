@@ -45,6 +45,7 @@ export const ADMIN_PERMISSIONS = {
   [ADMIN_TYPES.SUPER_ADMIN]: {
     level: ADMIN_LEVELS.LEVEL_5,
     permissions: [
+      "view_reports",
       "all",
       "manage_users",
       "manage_campaigns",
@@ -59,7 +60,8 @@ export const ADMIN_PERMISSIONS = {
       "view_financial_reports",
       "manage_communications",
       "view_communication_reports",
-      "website_admin", // NEW
+      "website_admin",
+      "view_org_docs",
     ],
     name: "المدير عام",
     description: "صلاحيات كاملة على النظام",
@@ -67,12 +69,14 @@ export const ADMIN_PERMISSIONS = {
   [ADMIN_TYPES.ADMIN]: {
     level: ADMIN_LEVELS.LEVEL_4,
     permissions: [
+      "view_reports",
       "manage_users",
       "manage_campaigns",
       "manage_donations",
       "manage_finances",
       "manage_volunteers",
       "view_reports",
+      "view_org_docs",
     ],
     name: "مدير",
     description: "إدارة شاملة للنظام",
@@ -80,48 +84,66 @@ export const ADMIN_PERMISSIONS = {
   [ADMIN_TYPES.MODERATOR]: {
     level: ADMIN_LEVELS.LEVEL_3,
     permissions: [
-      "moderate_content",
-      "view_reports", // عرض التقارير
-      "view_volunteer_reports", // عرض تقارير المتطوعين
-      "view_donation_reports", // عرض تقارير التبرعات
-      "view_campaign_reports", // عرض تقارير الحملات
-      "view_financial_reports", // عرض التقارير المالية
       "view_reports",
+      "moderate_content",
+      "view_reports",
+      "view_volunteer_reports",
+      "view_donation_reports",
+      "view_campaign_reports",
+      "view_financial_reports",
+      "view_org_docs",
     ],
     name: "مشرف",
     description: "إشراف على المحتوى والمتطوعين",
   },
   [ADMIN_TYPES.VOLUNTEER_COORDINATOR]: {
     level: ADMIN_LEVELS.LEVEL_1,
-    permissions: ["manage_volunteers", "view_volunteer_reports"],
+    permissions: [
+      "view_reports",
+      "manage_volunteers",
+      "view_volunteer_reports",
+      "view_org_docs",
+    ],
     name: "منسق المتطوعين",
     description: "إدارة المتطوعين وتنسيقهم",
   },
   [ADMIN_TYPES.DONATION_MANAGER]: {
     level: ADMIN_LEVELS.LEVEL_1,
-    permissions: ["manage_donations", "view_donation_reports"],
+    permissions: [
+      "view_reports",
+      "manage_donations",
+      "view_donation_reports",
+      "view_org_docs",
+    ],
     name: "مدير التبرعات",
     description: "إدارة التبرعات والمتابعة",
   },
   [ADMIN_TYPES.CAMPAIGN_MANAGER]: {
     level: ADMIN_LEVELS.LEVEL_2,
-    permissions: ["manage_campaigns", "view_campaign_reports"],
+    permissions: [
+      "view_reports",
+      "manage_campaigns",
+      "view_campaign_reports",
+      "view_org_docs",
+    ],
     name: "مدير الحملات",
     description: "إدارة الحملات والتسويق",
   },
   [ADMIN_TYPES.FINANCE_MANAGER]: {
     level: ADMIN_LEVELS.LEVEL_3,
     permissions: [
+      "view_reports",
       "manage_finances",
       "view_financial_reports",
       "manage_donations",
-      "manage_donations", // إدارة التبرعات
-      "manage_finances", // إدارة المالية
-      "view_reports", // عرض التقارير
-      "view_volunteer_reports", // عرض تقارير المتطوعين
-      "view_donation_reports", // عرض تقارير التبرعات
-      "view_campaign_reports", // عرض تقارير الحملات
-      "view_financial_reports", // عرض التقارير المالية
+      "manage_donations",
+      "manage_finances",
+      "view_reports",
+      "view_volunteer_reports",
+      "view_donation_reports",
+      "view_campaign_reports",
+      "view_financial_reports",
+      "view_org_docs",
     ],
     name: "مدير المالية",
     description: "إدارة الشؤون المالية",
@@ -129,16 +151,18 @@ export const ADMIN_PERMISSIONS = {
   [ADMIN_TYPES.COMMUNICATION_MANAGER]: {
     level: ADMIN_LEVELS.LEVEL_2,
     permissions: [
+      "view_reports",
       "manage_communications",
       "moderate_content",
       "view_communication_reports",
+      "view_org_docs",
     ],
     name: "مدير الاعلام",
     description: "إدارة التواصل والمحتوى",
   },
   [ADMIN_TYPES.WEBSITE_ADMIN]: {
     level: ADMIN_LEVELS.LEVEL_4,
-    permissions: ["all"],
+    permissions: ["view_reports", "all", "view_org_docs"],
     name: "مسؤول الموقع",
     description: "إدارة الموقع والصلاحيات المرتبطة به",
   },
@@ -258,7 +282,7 @@ export const AuthProvider = ({ children }) => {
         emailVerified: user.emailVerified,
         adminType: null, // Regular user by default
         adminLevel: 0,
-        permissions: [],
+        permissions: ["view_reports"],
         phone: additionalData.phone || "",
         firstName: additionalData.firstName || "",
         lastName: additionalData.lastName || "",
@@ -431,7 +455,7 @@ export const AuthProvider = ({ children }) => {
         await updateUserDocument(userId, {
           adminType: null,
           adminLevel: 0,
-          permissions: [],
+          permissions: ["view_reports"],
           demotedAt: new Date().toISOString(),
           demotedBy: user?.uid,
           role: "مستخدم", // Always set Arabic role for regular user
@@ -443,7 +467,7 @@ export const AuthProvider = ({ children }) => {
             ...prevUser,
             adminType: null,
             adminLevel: 0,
-            permissions: [],
+            permissions: ["view_reports"],
             role: "مستخدم", // Update local state too
           }));
         }
@@ -501,7 +525,7 @@ export const AuthProvider = ({ children }) => {
       try {
         await updateUserDocument(userId, {
           adminLevel: 5,
-          permissions: ["all"],
+          permissions: ["view_reports", "all"],
         });
 
         // Update local state if it's the current user
@@ -509,7 +533,7 @@ export const AuthProvider = ({ children }) => {
           setUser((prevUser) => ({
             ...prevUser,
             adminLevel: 5,
-            permissions: ["all"],
+            permissions: ["view_reports", "all"],
           }));
         }
 
