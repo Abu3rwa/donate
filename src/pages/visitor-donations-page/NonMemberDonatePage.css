@@ -40,29 +40,29 @@
   direction: rtl;
 }
 .donate-filter-btn {
-  display: flex;
   align-items: center;
-  gap: 0.3em;
   background: #f3f4f6;
-  color: #198754;
   border: 1.5px solid #d1d5db;
   border-radius: 999px;
-  padding: 0.4em 1.1em;
-  font-weight: 700;
-  font-size: 1rem;
-  transition: background 0.18s, color 0.18s, border 0.18s;
+  color: #21d2ee !important;
   cursor: pointer;
+  display: flex;
+  font-size: 1rem;
+  font-weight: 700;
+  gap: 0.3em;
   outline: none;
+  padding: 0.4em 1.1em;
+  transition: background 0.18s, color 0.18s, border 0.18s;
 }
 .donate-filter-btn.active {
   background: #1ac8bf;
-  color: #fff;
+  color: #fff !important;
   border-color: #1ac8bf;
   box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.1);
 }
 .donate-filter-btn:hover:not(.active) {
   background: #e0f2fe;
-  color: #1ac8bf;
+  color: #1ac8bf !important;
 }
 
 .donate-info-banner {

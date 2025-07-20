@@ -69,7 +69,27 @@ exports.createUserByAdmin = onCall(async (request) => {
       .doc(userRecord.uid)
       .set(userProfile);
 
-    // 6. Send credentials email to the new user
+    // 6. Get admin info for email signature
+    const adminData = adminDoc.data();
+    const contactInfo = adminData.phone || "3bdulhafeez.sd@gmail.com";
+    const senderName = adminData.displayName || "مكتب الاعلام";
+    const senderRole = adminData.role || "مدير النظام";
+    const address = adminData.currentCountry || "";
+
+    // 7. Send credentials email to the new user
+    console.log({
+      "sending email": {
+        displayName,
+        email,
+        password,
+        role,
+        permissions: permissions || [],
+        contactInfo,
+        senderName,
+        senderRole,
+        address,
+      },
+    });
     await sendCredentialsEmail({
       to: email,
       displayName,
@@ -77,6 +97,10 @@ exports.createUserByAdmin = onCall(async (request) => {
       password,
       role,
       permissions: permissions || [],
+      contactInfo,
+      senderName,
+      senderRole,
+      address,
     });
 
     return {
@@ -213,6 +237,7 @@ exports.deleteUserByAdmin = onCall(async (request) => {
     await admin.firestore().collection("users").doc(userId).delete();
     return { success: true, message: "User deleted successfully." };
   } catch (error) {
+    console.error("❌ Error deleting user:", error); // Log full error
     throw new Error(error.message || "Failed to delete user.");
   }
 });

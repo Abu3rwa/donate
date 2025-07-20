@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getOrgInfo } from "../../services/orgInfoService";
 
-const DashboardHeader = ({ user }) => {
+const DashboardHeader = ({ onMenuClick, user, logout, hasPermission }) => {
   const [orgInfo, setOrgInfo] = useState({});
   useEffect(() => {
     const fetchOrg = async () => {
@@ -11,23 +11,15 @@ const DashboardHeader = ({ user }) => {
     fetchOrg();
   }, []);
   return (
-    <header
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "start",
-        padding: "10px",
-        background: "#f8f9fa",
-        borderBottom: "2px solid #e5e7eb",
-        boxShadow: "0 2px 8px rgba(25,135,84,0.04)",
-        marginBottom: 24,
-        fontFamily:
-          "'Tajawal', 'Cairo', 'Alexandria', 'Amiri', 'DM Serif Text', Tahoma, Arial, sans-serif",
-      }}
-    >
+    <header className="flex items-center justify-between px-4 py-3 bg-[var(--paper-color)] border-b border-[var(--divider)] shadow-sm sticky top-0 z-30">
+      {/* Hamburger menu for mobile */}
+
       <a
         href="/dashboard"
         style={{
+          maxWidth: "200px",
+          display: "flex",
+          alignItems: "center",
           textDecoration: "none",
           color: "inherit",
         }}
@@ -73,9 +65,29 @@ const DashboardHeader = ({ user }) => {
               {orgInfo?.name || "اسم الجمعية"}
             </h1>
           </div>
-          {orgInfo?.longName}
+          <small>{orgInfo?.longName}</small>
         </div>
       </a>
+      <button
+        className="lg:hidden p-2 text-gray-700 dark:text-gray-200"
+        onClick={onMenuClick}
+        aria-label="Open sidebar"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+          className="w-7 h-7"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3.75 6.75h16.5m-16.5 5.25h16.5m-16.5 5.25h16.5"
+          />
+        </svg>
+      </button>
     </header>
   );
 };

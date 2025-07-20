@@ -1,0 +1,193 @@
+.userCard {
+  background: var(--paper-color, #fff);
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  /* border: 1px solid var(--divider, #e5e7eb); */
+  transition: box-shadow 0.2s, border-color 0.2s;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: start;
+}
+.userList {
+  width: 100%;
+}
+.mobileListContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.detailsButton {
+  background-color: rgb(0, 177, 160) !important;
+  color: rgb(251, 255, 255) !important;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  margin-left: 0.5rem;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.detailsButton:hover {
+  background-color: rgb(0, 158, 143) !important;
+}
+.actions {
+  /* background: var(--divider, #e5e7eb); */
+  /* height: 1px; */
+  margin: 0 1rem;
+  flex-direction: row;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  padding: 7px;
+  align-self: center;
+}
+.delete {
+  background-color: #ef4444 !important;
+  color: #fff !important;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  margin-left: 0.5rem;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.delete:hover {
+  background-color: #dc2626 !important;
+}
+
+.edit {
+  background-color: #f59e42 !important;
+  color: #fff !important;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  margin-left: 0.5rem;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.edit:hover {
+  background-color: #ea580c !important;
+}
+
+.signout {
+  background-color: #64748b !important;
+  color: #fff !important;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  margin-left: 0.5rem;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.signout:hover {
+  background-color: #334155 !important;
+}
+
+.userCard:hover,
+.userCard:focus-within {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border-color: var(--primary-color, #3b82f6);
+}
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--divider, #e5e7eb);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  background: #f3f4f6;
+}
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  cursor: pointer;
+  direction: rtl;
+}
+.userInfo {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+}
+.userName {
+  /* font-weight: 600; */
+  color: var(--text-primary, #111827);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* max-width: 150px; */
+  font-size: 13px;
+  display: inline-block;
+}
+.userEmail {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  display: inline-block;
+}
+.chevron {
+  transition: transform 0.3s;
+  color: #6b7280;
+}
+.chevronOpen {
+  transform: rotate(180deg);
+  color: var(--primary-color, #3b82f6);
+}
+.expandedSection {
+  background: #f9fafb;
+  border-top: 1px solid var(--divider, #e5e7eb);
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+  transition: background 0.2s;
+}
+.actionButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+.actionButton {
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  background: #f3f4f6;
+  color: #374151;
+  transition: background 0.2s, color 0.2s;
+  cursor: pointer;
+}
+.actionButton:active {
+  background: #e5e7eb;
+  color: #00b0b0;
+}
+@media (max-width: 640px) {
+  .userCard {
+    margin-bottom: 0.75rem;
+  }
+  .header {
+    padding: 0.75rem;
+  }
+  .expandedSection {
+    padding: 0.75rem 1rem 1rem 1rem;
+  }
+}

@@ -44,7 +44,7 @@ export default async function generateDonationDetailsHtml({
       value: donation.isAnonymous ? "فاعل خير" : donation.donorName,
     },
     { label: "رقم الجوال", value: donation.donorPhone || "-" },
-    { label: "المبلغ", value: `${donation.amount} ريال` },
+    { label: "المبلغ", value: `${donation.amount} جنيه سوداني` },
     {
       label: "الحالة",
       value: getStatusText ? getStatusText(donation.status) : donation.status,

@@ -15,6 +15,7 @@ import toast from "react-hot-toast";
 import { useEffect } from "react";
 import { uploadFile } from "../../services/fileUploadService";
 import countriesAr from "../../helpers/countriesAr";
+import ADMIN_TYPES_AR from "../../helpers/adminTypesMap";
 
 const userSchema = yup
   .object({
@@ -69,12 +70,31 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
   const [profileImagePreview, setProfileImagePreview] = useState(null);
   // Load persisted form data if available
   const persistedData = React.useMemo(() => {
-    if (initialData) return initialData;
+    if (initialData) {
+      // If user has adminType, set role to 'مسؤول' and adminType to the key
+      let roleValue = "مشاهد";
+      let adminTypeValue = "";
+      if (initialData.adminType && ADMIN_PERMISSIONS[initialData.adminType]) {
+        roleValue = "مسؤول";
+        adminTypeValue = initialData.adminType;
+      } else if (initialData.role === "محرر") {
+        roleValue = "محرر";
+      }
+      return {
+        ...initialData,
+        role: roleValue,
+        adminType: adminTypeValue,
+        permissions: initialData.permissions || [],
+      };
+    }
     try {
       const saved = localStorage.getItem(FORM_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : {};
+      const parsed = saved ? JSON.parse(saved) : {};
+      // Default homeCountry to 'Sudan' if not set in arabic
+      if (!parsed.homeCountry) parsed.homeCountry = "Sudan";
+      return parsed;
     } catch {
-      return {};
+      return { homeCountry: "Sudan" };
     }
   }, [initialData]);
 
@@ -91,7 +111,10 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
     defaultValues: persistedData,
   });
 
-  // Handle profile image preview
+  // Move watchedFields above its first use
+  const watchedFields = watch();
+
+  // Restore handleProfileImageChange
   const handleProfileImageChange = (e) => {
     const file = e.target.files[0];
     setProfileImageFile(file);
@@ -104,8 +127,14 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
     }
   };
 
+  // Set password to phone number by default for new users
+  React.useEffect(() => {
+    if (!initialData && watchedFields.phone && !watchedFields.password) {
+      setValue("password", watchedFields.phone);
+    }
+  }, [watchedFields.phone, initialData, setValue, watchedFields.password]);
+
   // Persist form data on change
-  const watchedFields = watch();
   React.useEffect(() => {
     if (!isLoading) {
       try {
@@ -136,28 +165,114 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
     }
   }, [initialData, setValue]);
 
+  useEffect(() => {
+    if (initialData) {
+      // Home Country
+      const homeCountryObj =
+        countriesAr.find((c) => c.nameAr === initialData.homeCountry) ||
+        countriesAr[0];
+      setSelectedHomeCountry(homeCountryObj);
+      setHomeCountrySearch(initialData.homeCountry || "");
+      setValue("homeCountry", initialData.homeCountry || "");
+      // Current Country
+      const currentCountryObj =
+        countriesAr.find((c) => c.nameAr === initialData.currentCountry) ||
+        countriesAr[0];
+      setSelectedCurrentCountry(currentCountryObj);
+      setCurrentCountrySearch(initialData.currentCountry || "");
+      setValue("currentCountry", initialData.currentCountry || "");
+      // Phone
+      setValue("phone", initialData.phone || "");
+      // Add more fields as needed
+    }
+  }, [initialData, setValue]);
+
+  useEffect(() => {
+    if (initialData && initialData.permissions) {
+      setPermissions(initialData.permissions);
+    }
+  }, [initialData]);
+
   const role = watch("role");
-  const adminType = watch("adminType");
+  const [memberOfficeRole, setMemberOfficeRole] = useState(
+    persistedData.memberOfficeRole || ""
+  );
+  const [adminType, setAdminType] = useState(persistedData.adminType || "");
   const [permissions, setPermissions] = useState(() => {
     if (initialData && initialData.permissions) return initialData.permissions;
     if (initialData && initialData.adminType)
       return ADMIN_PERMISSIONS[initialData.adminType]?.permissions || [];
+    // Default: if adminType is super_admin, give all permissions
     return [];
   });
 
-  // When adminType changes, update permissions to default for that role
+  // When role changes, update adminType and permissions
+  useEffect(() => {
+    if (role !== "مسؤول") {
+      setAdminType("");
+      setPermissions([]);
+    } else if (adminType) {
+      if (adminType === "super_admin") {
+        // All unique permissions for super_admin
+        const allPerms = Array.from(
+          new Set([
+            "all",
+            ...Object.values(ADMIN_PERMISSIONS).flatMap((p) => p.permissions),
+          ])
+        );
+        setPermissions(allPerms);
+      } else {
+        const perms = ADMIN_PERMISSIONS[adminType]?.permissions || [];
+        if (perms.includes("all")) {
+          setPermissions(["all"]);
+        } else {
+          setPermissions(perms);
+        }
+      }
+    }
+  }, [role, adminType]);
+
+  // When adminType changes, update permissions
   useEffect(() => {
     if (role === "مسؤول" && adminType) {
-      setPermissions(ADMIN_PERMISSIONS[adminType]?.permissions || []);
+      if (adminType === "super_admin") {
+        // All unique permissions for super_admin
+        const allPerms = Array.from(
+          new Set([
+            "all",
+            ...Object.values(ADMIN_PERMISSIONS).flatMap((p) => p.permissions),
+          ])
+        );
+        setPermissions(allPerms);
+      } else {
+        const perms = ADMIN_PERMISSIONS[adminType]?.permissions || [];
+        if (perms.includes("all")) {
+          setPermissions(["all"]);
+        } else {
+          setPermissions(perms);
+        }
+      }
     }
   }, [adminType, role]);
 
+  // When memberOfficeRole changes, update adminType
+  useEffect(() => {
+    if (role === "مسؤول" && memberOfficeRole) {
+      const mappedAdminType = officeRoleToAdminType[memberOfficeRole];
+      setAdminType(mappedAdminType || "");
+      setValue("adminType", mappedAdminType || "");
+    }
+  }, [memberOfficeRole, role, setValue]);
+
   // All unique permissions
   const allPermissions = Array.from(
-    new Set(Object.values(ADMIN_PERMISSIONS).flatMap((p) => p.permissions))
-  ).filter((p) => p !== "all");
+    new Set([
+      "all",
+      ...Object.values(ADMIN_PERMISSIONS).flatMap((p) => p.permissions),
+    ])
+  );
 
-  const [homeCountrySearch, setHomeCountrySearch] = useState("");
+  const [homeCountrySearch, setHomeCountrySearch] = useState("السودان");
   const [currentCountrySearch, setCurrentCountrySearch] = useState("");
   const [selectedHomeCountry, setSelectedHomeCountry] = useState(
     countriesAr[0]
@@ -167,6 +282,41 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
   );
   const [showHomeDropdown, setShowHomeDropdown] = useState(false);
   const [showCurrentDropdown, setShowCurrentDropdown] = useState(false);
+
+  // Build options for the role dropdown
+  const roleOptions = [
+    { value: "مشاهد", label: "مشاهد" },
+    { value: "محرر", label: "محرر" },
+    { value: "مسؤول", label: "مسؤول" },
+  ];
+  // Build options for the adminType dropdown
+  const adminTypeOptions = Object.entries(ADMIN_PERMISSIONS).map(
+    ([key, value]) => ({
+      value: key, // English key sent to Firebase
+      label: value.name, // Arabic label shown in UI
+    })
+  );
+
+  // Add mapping for office roles
+  const officeRoleOptions = [
+    { value: "president", label: "الرئيس" },
+    { value: "finance_manager", label: "الأمين المالي" },
+    { value: "communication_manager", label: "الأمين الإعلامي" },
+    { value: "consultant", label: "عضو استشاري" },
+    { value: "founding_member", label: "عضو مؤسس" },
+    { value: "honorary_member", label: "عضوية شرفية" },
+    { value: "member", label: "عضو" },
+  ];
+
+  const officeRoleToAdminType = {
+    president: "president",
+    finance_manager: "finance_manager",
+    communication_manager: "communication_manager",
+    consultant: "consultant",
+    founding_member: "founding_member",
+    honorary_member: "honorary_member",
+    member: "member",
+  };
 
   const onSubmit = async (data) => {
     // Trim spaces from phone before validation and submission
@@ -183,8 +333,10 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
     try {
       const now = new Date();
       const timestamp = now.toISOString();
-      const isAdmin = data.role === "مسؤول" && data.adminType;
-      const adminPerm = isAdmin ? ADMIN_PERMISSIONS[data.adminType] : null;
+      // Determine if the selected role is an adminType
+      const isAdmin = role === "مسؤول";
+      const selectedAdminType = isAdmin ? adminType : "";
+      const adminPerm = isAdmin ? ADMIN_PERMISSIONS[selectedAdminType] : null;
 
       let uploadedImageUrl = initialData?.photoURL || null;
       if (profileImageFile) {
@@ -218,24 +370,40 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
         registrationDate: initialData?.registrationDate || timestamp,
         source: "website",
         status: "Active",
-        role:
-          data.role === "مسؤول"
-            ? ADMIN_PERMISSIONS[data.adminType]?.name || "مدير"
-            : data.role,
-        adminType: isAdmin ? data.adminType : null,
-        adminLevel: isAdmin ? adminPerm?.level : 0,
-        permissions: isAdmin ? permissions : [],
+        role: isAdmin ? "مسؤول" : role,
+        adminType: isAdmin ? selectedAdminType : null,
+        adminLevel:
+          isAdmin && adminPerm && typeof adminPerm.level === "number"
+            ? adminPerm.level
+            : 0,
+        permissions:
+          isAdmin && selectedAdminType === "super_admin"
+            ? Array.from(
+                new Set([
+                  "all",
+                  ...Object.values(ADMIN_PERMISSIONS).flatMap(
+                    (p) => p.permissions
+                  ),
+                ])
+              )
+            : isAdmin && adminPerm?.permissions?.includes("all")
+            ? ["all"]
+            : isAdmin
+            ? permissions
+            : [],
         emailVerified: initialData?.emailVerified || false,
+        memberOfficeRole: memberOfficeRole || null,
       };
-
+      console.log("user Profile", userProfile);
       if (initialData && (initialData.uid || initialData.id)) {
         // Update existing user
         const userId = initialData.uid || initialData.id;
-        await updateUserById(userId, userProfile);
+        await updateUserById(userId, { ...initialData, ...userProfile });
         toast.success("تم تحديث المستخدم بنجاح!");
         onUserAdded({ ...userProfile, id: userId });
       } else {
         // Create new user as admin
+        console.log("🚀 userProfile sent to backend:", userProfile);
         const result = await createUserByAdminCloud({
           ...userProfile,
           password: data.password,
@@ -383,6 +551,9 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
             >
               توليد كلمة مرور
             </button>
+            <span className="text-xs text-gray-500 px-2 py-1">
+              (افتراضي: رقم الهاتف)
+            </span>
           </div>
           {errors.password && (
             <p className="error-message">{errors.password.message}</p>
@@ -400,31 +571,54 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
           id="role"
           {...register("role")}
           className="input-field text-center"
+          defaultValue="مشاهد"
         >
-          <option value="مشاهد">مشاهد</option>
-          <option value="محرر">محرر</option>
-          <option value="مسؤول">مسؤول</option>
+          {roleOptions.map((opt) => (
+            <option key={opt.value} value={opt.label}>
+              {opt.label}
+            </option>
+          ))}
         </select>
         {errors.role && <p className="error-message">{errors.role.message}</p>}
       </div>
       {role === "مسؤول" && (
-        <>
           <div>
-            <label
-              htmlFor="adminType"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >
-              نوع المسؤول
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            الدور في المكتب التنفيذي
+          </label>
+          <select
+            id="memberOfficeRole"
+            value={memberOfficeRole}
+            onChange={(e) => setMemberOfficeRole(e.target.value)}
+            className="input-field text-center"
+          >
+            <option value="">اختر الدور في المكتب...</option>
+            {officeRoleOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {role === "مسؤول" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            نوع المسؤول (للصلاحيات)
             </label>
             <select
               id="adminType"
-              {...register("adminType")}
+            value={adminType}
+            onChange={(e) => {
+              setAdminType(e.target.value);
+              setValue("adminType", e.target.value);
+            }}
               className="input-field text-center"
             >
               <option value="">اختر نوع المسؤول...</option>
-              {Object.entries(ADMIN_PERMISSIONS).map(([key, value]) => (
-                <option key={key} value={key}>
-                  {value.name}
+            {adminTypeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
                 </option>
               ))}
             </select>
@@ -432,6 +626,8 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
               <p className="error-message">{errors.adminType.message}</p>
             )}
           </div>
+      )}
+          {role === "مسؤول" && adminType && (
           <div className="mt-4">
             <label className="block text-sm font-medium mb-2 text-[var(--text-secondary)]">
               الصلاحيات
@@ -441,23 +637,29 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
                 <label key={perm} className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    checked={permissions.includes(perm)}
+                      checked={
+                    permissions.includes("all") || permissions.includes(perm)
+                      }
                     onChange={(e) => {
+                    if (permissions.includes("all")) return;
                       if (e.target.checked) {
                         setPermissions((prev) => [...prev, perm]);
                       } else {
-                        setPermissions((prev) =>
-                          prev.filter((p) => p !== perm)
-                        );
+                      setPermissions((prev) => prev.filter((p) => p !== perm));
                       }
                     }}
+                  disabled={permissions.includes("all")}
                   />
                   {PERMISSIONS_AR[perm] || perm}
                 </label>
               ))}
             </div>
-          </div>
-        </>
+          {permissions.includes("all") && (
+            <div className="mt-4 text-green-700 font-semibold">
+              كل الصلاحيات متاحة لهذا المستخدم (صلاحيات كاملة)
+            </div>
+          )}
+        </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Home Country */}
@@ -472,7 +674,8 @@ export default function AddUserForm({ onCancel, onUserAdded, initialData }) {
             <input
               type="text"
               placeholder="ابحث عن الدولة..."
-              value={homeCountrySearch}
+              // Set default value to "Sudan" if empty
+              value={homeCountrySearch || "السودان"}
               onFocus={() => setShowHomeDropdown(true)}
               onBlur={() => setTimeout(() => setShowHomeDropdown(false), 150)}
               onChange={(e) => {

@@ -1,3 +1,4 @@
+import "./dashboardLayout.css";
 import React from "react";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -173,7 +174,7 @@ const DashboardLayout = () => {
         onLogout={logout}
         navigationItems={navigationItems}
       />
-      <div className="flex-1 flex flex-col lg:mr-64">
+      <div className="flex-1 flex flex-col lg:mr-64 overflow-y-auto h-full dashboard-layout">
         <DashboardHeader
           onMenuClick={toggleSidebar}
           user={user}
@@ -206,14 +207,14 @@ const DashboardLayout = () => {
             />
           </Routes>
         </main>
-        <BottomNav
+        {/* <BottomNav
           user={user}
           hasPermission={useAuth().hasPermission}
           onAddDonation={() => navigate("/dashboard/add-donation")}
           onShowFinancialReports={() =>
             navigate("/dashboard/financial-reports")
           }
-        />
+        /> */}
       </div>
     </div>
   );

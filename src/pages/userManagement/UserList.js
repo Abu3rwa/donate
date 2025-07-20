@@ -15,6 +15,7 @@ import {
   LogOut,
   Table,
   LayoutGrid,
+  ChevronDown,
 } from "lucide-react";
 import { ADMIN_TYPES, ADMIN_PERMISSIONS } from "../../contexts/AuthContext";
 import { getRoleColor, isAdmin, isRegularUser } from "./UserManagementHelpers";
@@ -22,9 +23,16 @@ import {
   resetPasswordByAdminCloud,
   signOutUserByAdminCloud,
   sendPasswordResetEmailByAdminCloud,
+  deleteUserDocByIdTemp,
 } from "../../services/userService";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import "./userManagement.css";
 import ActionMenu from "./ActionMenu";
+import MobileUserList from "./MobileUserList";
+import MEMBERSHIP_TYPE_AR from "../../helpers/membershipType";
+import ADMIN_TYPES_AR from "../../helpers/adminTypesMap";
+import UserDetailsModal from "./UserDetailsModal";
+import MemberOfficeRoleBadge from "./MemberOfficeRoleBadge";
 
 export const UserList = ({
   filteredUsers,
@@ -41,11 +49,29 @@ export const UserList = ({
   handleUpgrade,
   handleDowngrade,
   showNotification,
-  onUserDeleted, // <-- add this prop for callback after delete
+  onUserDeleted,
+  onShowUserDetails,
 }) => {
   const [view, setView] = useState("table"); // 'table' or 'cards'
   const [openMenuUserId, setOpenMenuUserId] = useState(null);
+  const [expandedUserId, setExpandedUserId] = useState(null);
+  const [detailsUser, setDetailsUser] = useState(null);
+
   const menuRef = useRef();
+  // Delete user document from Firestore by user id (uid)
+  const handleDeleteUserById = async (uid) => {
+    console.log(uid);
+    try {
+      await deleteUserDocByIdTemp(uid);
+
+      showNotification &&
+        showNotification("تم حذف المستخدم بنجاح", { type: "success" });
+    } catch (error) {
+      showNotification &&
+        showNotification("حدث خطأ أثناء حذف المستخدم", { type: "error" });
+      console.error("Error deleting user by id:", error);
+    }
+  };
 
   // Close menu on outside click
   React.useEffect(() => {
@@ -64,18 +90,20 @@ export const UserList = ({
     };
   }, [openMenuUserId]);
 
+  // Remove the inline handleDeleteUser and use the imported one
   // Fix: force update the list after a user is deleted
-  const handleDeleteUser = async (user) => {
-    if (setDeleteConfirm) {
-      setDeleteConfirm({
-        user,
-        onDeleted: () => {
-          if (typeof onUserDeleted === "function") {
-            onUserDeleted(user);
-          }
-        },
-      });
-    }
+
+  // Add this function to handle user sign out
+  const handleSignOutUser = (user) => {
+    // Implement your sign out logic here
+    // For now, just show a notification
+    showNotification &&
+      showNotification(
+        `تم تسجيل خروج المستخدم: ${
+          user.displayName || user.name || user.email
+        }`,
+        { type: "info" }
+      );
   };
 
   return (
@@ -106,7 +134,7 @@ export const UserList = ({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto   lg:px-8 py-6">
         {/* Notifications */}
         {error && (
           <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center">
@@ -152,27 +180,7 @@ export const UserList = ({
           </div>
           <div className="flex gap-2">
             <button
-              className={`px-3 py-1 rounded-lg font-medium border ${
-                view === "table"
-                  ? "gradient-accent text-white border-none"
-                  : "bg-white text-[var(--primary-color)] border-[var(--primary-color)]"
-              }`}
-              onClick={() => setView("table")}
-            >
-              <Table className="inline-block ml-2 w-4 h-4" /> جدول
-            </button>
-            <button
-              className={`px-3 py-1 rounded-lg font-medium border ${
-                view === "cards"
-                  ? "gradient-accent text-white border-none"
-                  : "bg-white text-[var(--primary-color)] border-[var(--primary-color)]"
-              }`}
-              onClick={() => setView("cards")}
-            >
-              <LayoutGrid className="inline-block ml-2 w-4 h-4" /> بطاقات
-            </button>
-            <button
-              className="flex items-center gap-2 bg-[var(--primary-color)] hover:bg-[var(--primary-dark)] text-white px-4 py-2 rounded-lg transition-colors font-medium"
+              className={`flex items-center gap-2 bg-[var(--primary-color)] hover:bg-[var(--primary-dark)] text-white px-4 py-2 rounded-lg transition-colors font-medium`}
               onClick={handleAddUserClick}
             >
               <Plus className="h-4 w-4" />
@@ -199,6 +207,7 @@ export const UserList = ({
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       المستخدم
                     </th>
+
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       الدور
                     </th>
@@ -221,17 +230,10 @@ export const UserList = ({
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          {currentUser &&
-                            (user.id === currentUser.uid ||
-                              user.uid === currentUser.uid) && (
-                              <span className="ml-2 px-2 py-0.5 rounded-full bg-yellow-400 text-xs text-yellow-900 font-bold">
-                                أنت
-                              </span>
-                            )}
-                          {/* ...avatar and name... */}
+                          {/* Avatar */}
                           {user.photoURL || user.profileImage ? (
                             <img
-                              src={user.photoURL || user.profileImage}
+                              src={user?.photoURL}
                               alt={user.displayName || user.name || "—"}
                               className="w-10 h-10 rounded-full object-cover border ml-3"
                             />
@@ -241,16 +243,32 @@ export const UserList = ({
                             </div>
                           )}
                           <div>
-                            <div className="text-sm font-medium text-[var(--text-primary)]">
+                            <div className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
                               {user.displayName || user.name || "—"}
+                              <MemberOfficeRoleBadge
+                                memberOfficeRole={user.memberOfficeRole}
+                              />
+                              {currentUser &&
+                                (user.id === currentUser.uid ||
+                                  user.uid === currentUser.uid) && (
+                                  <span className="px-2 py-0.5 rounded-full bg-yellow-400 text-xs text-yellow-900 font-bold">
+                                    أنت
+                                  </span>
+                                )}
                             </div>
-                            <div className="text-sm text-[var(--text-secondary)] flex items-center">
+                            <div
+                              onClick={() =>
+                                handleDeleteUserById(user.id || user.uid)
+                              }
+                              className="text-sm text-[var(--text-secondary)] flex items-center"
+                            >
                               <Mail className="h-3 w-3 ml-1" />
                               {user.phone || "—"}
                             </div>
                           </div>
                         </div>
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(
@@ -272,12 +290,15 @@ export const UserList = ({
                           (user.id === currentUser.uid ||
                             user.uid === currentUser.uid)
                         ) && (
-                          <ActionMenu
-                            user={user}
-                            handleEdit={handleEdit}
-                            setDeleteConfirm={handleDeleteUser}
-                            showNotification={showNotification}
-                          />
+                          <>
+                            <ActionMenu
+                              user={user}
+                              handleEdit={handleEdit}
+                              setDeleteConfirm={setDeleteConfirm}
+                              showNotification={showNotification}
+                              onShowUserDetails={onShowUserDetails}
+                            />
+                          </>
                         )}
                       </td>
                     </tr>
@@ -285,33 +306,15 @@ export const UserList = ({
                 </tbody>
               </table>
             </div>
-            {/* Mobile Cards (keep as fallback for mobile) */}
-            <div className="md:hidden">
-              {filteredUsers.map((user) => (
-                <div
-                  key={user.id || user.uid}
-                  className={`p-4 border-b border-[var(--divider)] last:border-b-0 ${
-                    currentUser &&
-                    (user.id === currentUser.uid ||
-                      user.uid === currentUser.uid)
-                      ? "ring-2 ring-[var(--primary-color)] bg-yellow-50 dark:bg-yellow-900/20"
-                      : ""
-                  }`}
-                >
-                  {/* ...mobile card content... */}
-                  <div className="text-sm font-medium text-[var(--text-primary)] mb-1 flex items-center gap-2">
-                    {user.displayName || user.name || "—"}
-                    {currentUser &&
-                      (user.id === currentUser.uid ||
-                        user.uid === currentUser.uid) && (
-                        <span className="px-2 py-0.5 rounded-full bg-yellow-400 text-xs text-yellow-900 font-bold">
-                          أنت
-                        </span>
-                      )}
-                  </div>
-                  {/* ...rest of mobile card... */}
-                </div>
-              ))}
+            {/* Mobile List View */}
+            <div className="block md:hidden">
+              <MobileUserList
+                filteredUsers={filteredUsers}
+                onEdit={handleEdit}
+                onDelete={setDeleteConfirm}
+                onSignOut={handleSignOutUser}
+                onShowDetails={setDetailsUser}
+              />
             </div>
           </div>
         ) : (
@@ -344,6 +347,9 @@ export const UserList = ({
                 <div className="text-center mb-2">
                   <div className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2 justify-center">
                     {user.displayName || user.name || "—"}
+                    <MemberOfficeRoleBadge
+                      memberOfficeRole={user.memberOfficeRole}
+                    />
                     {currentUser &&
                       (user.id === currentUser.uid ||
                         user.uid === currentUser.uid) && (
@@ -386,8 +392,9 @@ export const UserList = ({
                     <ActionMenu
                       user={user}
                       handleEdit={handleEdit}
-                      setDeleteConfirm={handleDeleteUser}
+                      setDeleteConfirm={setDeleteConfirm}
                       showNotification={showNotification}
+                      onShowUserDetails={onShowUserDetails}
                     />
                   )}
                 </div>
@@ -404,6 +411,12 @@ export const UserList = ({
           </div>
         )}
       </div>
+      {detailsUser && (
+        <UserDetailsModal
+          user={detailsUser}
+          onClose={() => setDetailsUser(null)}
+        />
+      )}
     </div>
   );
 };

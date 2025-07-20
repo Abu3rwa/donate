@@ -14,6 +14,7 @@ const PERMISSIONS_AR = {
   view_financial_reports: "عرض التقارير المالية",
   manage_communications: "إدارة التواصل",
   view_communication_reports: "عرض تقارير التواصل",
+  website_admin: "إدارة الموقع",
 };
 
-export default PERMISSIONS_AR; 
+export default PERMISSIONS_AR;

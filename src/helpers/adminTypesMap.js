@@ -8,6 +8,7 @@ const ADMIN_TYPES_AR = {
   campaign_manager: "مدير الحملات",
   finance_manager: "مدير المالية",
   communication_manager: "مدير التواصل",
+  website_admin: "إدارة الموقع",
 };
 
 export default ADMIN_TYPES_AR;

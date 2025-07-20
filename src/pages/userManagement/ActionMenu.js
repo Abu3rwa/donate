@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Edit, Trash2, Menu, KeyRound, LogOut, Mail } from "lucide-react";
+import { Edit, Trash2, Menu, KeyRound, LogOut, Mail, Eye } from "lucide-react";
 import {
   resetPasswordByAdminCloud,
   signOutUserByAdminCloud,
@@ -12,6 +12,7 @@ const ActionMenu = ({
   handleEdit,
   setDeleteConfirm,
   showNotification,
+  onShowUserDetails,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
@@ -48,6 +49,15 @@ const ActionMenu = ({
       </button>
       {isOpen && (
         <ul className="user-actions-menu text-right" dir="rtl">
+          <li>
+            <button
+              onClick={() => handleActionClick(() => onShowUserDetails(user))}
+              className="user-actions-item"
+            >
+              <Eye className="h-4 w-4" />
+              التفاصيل
+            </button>
+          </li>
           <li>
             <button
               onClick={() => handleActionClick(() => handleEdit(user))}

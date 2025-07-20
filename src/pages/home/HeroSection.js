@@ -35,7 +35,7 @@ const HeroSection = () => {
       {/* SVG Pattern Background */}
       <SvgPattern />
       {/* Semi-transparent dark overlay for text contrast */}
-      <div className="absolute inset-0 bg-black/50 z-20" />
+      {/* <div className="absolute inset-0 bg-black/50 z-20" /> */}
       {/* Content */}
       <div className="relative z-30 w-full max-w-2xl mx-auto flex flex-col items-center justify-center px-2 sm:px-0 py-10 sm:py-20">
         <Typography

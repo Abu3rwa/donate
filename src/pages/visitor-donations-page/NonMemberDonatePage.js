@@ -16,11 +16,12 @@ import DonationModal from "./DonationModal";
 import { getDonationsForCampaign } from "../../services/donationsService";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import GallerySlider from "./GallerySlider";
 
 const FILTERS = [
   { key: "all", label: "الكل", icon: <InfoOutlinedIcon /> },
   { key: "sadaqah", label: "صدقة", icon: <VolunteerActivismIcon /> },
-  { key: "zakat", label: "زكاة", icon: <PaidIcon /> },
+  // { key: "zakat", label: "زكاة", icon: <PaidIcon /> },
   { key: "orphans", label: "الأيتام", icon: <ChildCareIcon /> },
 ];
 
@@ -261,10 +262,15 @@ export default function NonMemberDonatePage() {
                   }`}
                 >
                   <div className="donate-card-img-wrap">
-                    <img
-                      src={c.image}
-                      alt={c.name}
-                      className="donate-card-img"
+                    <GallerySlider
+                      images={
+                        c.gallery &&
+                        Array.isArray(c.gallery) &&
+                        c.gallery.length > 0
+                          ? c.gallery
+                          : [c.image]
+                      }
+                      campaignName={c.name}
                     />
                   </div>
                   <div className="donate-card-content">
@@ -370,11 +376,6 @@ export default function NonMemberDonatePage() {
                       التفاصيل
                     </a>
                   </div>
-                  {c.gallery &&
-                    Array.isArray(c.gallery) &&
-                    c.gallery.length > 0 && (
-                      <GallerySlider images={c.gallery} campaignName={c.name} />
-                    )}
                 </div>
               ))
             )}
@@ -387,62 +388,6 @@ export default function NonMemberDonatePage() {
           campaign={selectedCampaign}
         />
       </div>
-    </div>
-  );
-}
-
-function GallerySlider({ images, campaignName }) {
-  const [current, setCurrent] = React.useState(0);
-  const total = images.length;
-  if (total === 0) return null;
-  const goPrev = (e) => {
-    e.stopPropagation();
-    setCurrent((prev) => (prev === 0 ? total - 1 : prev - 1));
-  };
-  const goNext = (e) => {
-    e.stopPropagation();
-    setCurrent((prev) => (prev === total - 1 ? 0 : prev + 1));
-  };
-  return (
-    <div className="donate-gallery-slider relative flex items-center justify-center mt-2">
-      {total > 1 && (
-        <button
-          className="absolute right-1 top-1/2 -translate-y-1/2 z-10 bg-white/80 rounded-full p-1 shadow hover:bg-gray-100"
-          onClick={goPrev}
-          title="السابق"
-          aria-label="السابق"
-        >
-          <ArrowBackIosNewIcon fontSize="small" />
-        </button>
-      )}
-      <img
-        src={images[current]}
-        alt={campaignName + " صورة " + (current + 1)}
-        className="donate-gallery-img rounded border mx-auto"
-        style={{ maxHeight: 120, objectFit: "cover" }}
-      />
-      {total > 1 && (
-        <button
-          className="absolute left-1 top-1/2 -translate-y-1/2 z-10 bg-white/80 rounded-full p-1 shadow hover:bg-gray-100"
-          onClick={goNext}
-          title="التالي"
-          aria-label="التالي"
-        >
-          <ArrowForwardIosIcon fontSize="small" />
-        </button>
-      )}
-      {total > 1 && (
-        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1">
-          {images.map((_, i) => (
-            <span
-              key={i}
-              className={`inline-block w-2 h-2 rounded-full ${
-                i === current ? "bg-green-600" : "bg-gray-300"
-              }`}
-            ></span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -30,6 +30,7 @@ export const ADMIN_TYPES = {
   CAMPAIGN_MANAGER: "campaign_manager",
   FINANCE_MANAGER: "finance_manager",
   COMMUNICATION_MANAGER: "communication_manager",
+  WEBSITE_ADMIN: "website_admin", // NEW
 };
 
 export const ADMIN_LEVELS = {
@@ -43,7 +44,23 @@ export const ADMIN_LEVELS = {
 export const ADMIN_PERMISSIONS = {
   [ADMIN_TYPES.SUPER_ADMIN]: {
     level: ADMIN_LEVELS.LEVEL_5,
-    permissions: ["all"],
+    permissions: [
+      "all",
+      "manage_users",
+      "manage_campaigns",
+      "manage_donations",
+      "manage_finances",
+      "manage_volunteers",
+      "view_reports",
+      "moderate_content",
+      "view_volunteer_reports",
+      "view_donation_reports",
+      "view_campaign_reports",
+      "view_financial_reports",
+      "manage_communications",
+      "view_communication_reports",
+      "website_admin", // NEW
+    ],
     name: "المدير عام",
     description: "صلاحيات كاملة على النظام",
   },
@@ -62,7 +79,15 @@ export const ADMIN_PERMISSIONS = {
   },
   [ADMIN_TYPES.MODERATOR]: {
     level: ADMIN_LEVELS.LEVEL_3,
-    permissions: ["moderate_content", "manage_volunteers", "view_reports"],
+    permissions: [
+      "moderate_content",
+      "view_reports", // عرض التقارير
+      "view_volunteer_reports", // عرض تقارير المتطوعين
+      "view_donation_reports", // عرض تقارير التبرعات
+      "view_campaign_reports", // عرض تقارير الحملات
+      "view_financial_reports", // عرض التقارير المالية
+      "view_reports",
+    ],
     name: "مشرف",
     description: "إشراف على المحتوى والمتطوعين",
   },
@@ -90,6 +115,13 @@ export const ADMIN_PERMISSIONS = {
       "manage_finances",
       "view_financial_reports",
       "manage_donations",
+      "manage_donations", // إدارة التبرعات
+      "manage_finances", // إدارة المالية
+      "view_reports", // عرض التقارير
+      "view_volunteer_reports", // عرض تقارير المتطوعين
+      "view_donation_reports", // عرض تقارير التبرعات
+      "view_campaign_reports", // عرض تقارير الحملات
+      "view_financial_reports", // عرض التقارير المالية
     ],
     name: "مدير المالية",
     description: "إدارة الشؤون المالية",
@@ -101,8 +133,14 @@ export const ADMIN_PERMISSIONS = {
       "moderate_content",
       "view_communication_reports",
     ],
-    name: "مدير التواصل",
+    name: "مدير الاعلام",
     description: "إدارة التواصل والمحتوى",
+  },
+  [ADMIN_TYPES.WEBSITE_ADMIN]: {
+    level: ADMIN_LEVELS.LEVEL_4,
+    permissions: ["all"],
+    name: "مسؤول الموقع",
+    description: "إدارة الموقع والصلاحيات المرتبطة به",
   },
 };
 

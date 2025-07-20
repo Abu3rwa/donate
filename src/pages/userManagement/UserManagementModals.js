@@ -178,7 +178,7 @@ export const UserManagementModals = ({
       {/* Show Permissions Modal */}
       {showPermissions.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-[var(--paper-color)] rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
+          <div className="bg-[var(--paper-color)] rounded-xl shadow-xl max-w-md w-full   p-6">
             <h2 className="text-lg font-bold mb-4 text-[var(--text-primary)]">
               صلاحي��ت المستخدم
             </h2>

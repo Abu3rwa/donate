@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import {
   getAllUsers,
-  deleteUserById,
+  deleteUserDocumentAndImageById,
   updateUserById,
+  deleteUserByAdminCloud, // <-- Make sure this exists in userService.js
 } from "../../services/userService";
 import {
   useAuth,
@@ -22,6 +23,7 @@ import {
   isRegularUser,
 } from "./UserManagementHelpers";
 import { UserList } from "./UserList";
+import UserDetailsModal from "./UserDetailsModal";
 
 const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
@@ -48,6 +50,7 @@ const UserManagementPage = () => {
     adminType: "",
     permissions: [],
   });
+  const [selectedUserForDetails, setSelectedUserForDetails] = useState(null);
 
   const { user: currentUser, promoteToAdmin, demoteFromAdmin } = useAuth();
   useEffect(() => {
@@ -120,13 +123,16 @@ const UserManagementPage = () => {
   const handleDelete = async (user) => {
     setLoading(true);
     try {
-      await deleteUserById(user.id || user.uid);
-      setUsers((prev) =>
-        prev.filter((u) => u.id !== user.id && u.uid !== user.uid)
-      );
+      await deleteUserByAdminCloud({ userId: user.id || user.uid });
+      await fetchUsers(); // Always refresh the user list from backend
       showNotification("تم حذف المستخدم بنجاح");
     } catch (err) {
-      showNotification("فشل في حذف المستخدم", "error");
+      showNotification(
+        "Failed to delete user: " +
+          (err && err.message ? err.message : JSON.stringify(err)),
+        "error"
+      );
+      console.error("Delete user error:", err);
     } finally {
       setLoading(false);
       setDeleteConfirm(null);
@@ -247,6 +253,21 @@ const UserManagementPage = () => {
     });
   };
 
+  const handleUserDeleted = (deletedUser) => {
+    setUsers((prevUsers) =>
+      prevUsers.filter((user) => user.id !== deletedUser.id)
+    );
+    showNotification("User doc deleted (TEMP)", "success");
+  };
+
+  const handleShowUserDetails = (user) => {
+    setSelectedUserForDetails(user);
+  };
+
+  const handleCloseUserDetails = () => {
+    setSelectedUserForDetails(null);
+  };
+
   return (
     <>
       <UserList
@@ -266,8 +287,9 @@ const UserManagementPage = () => {
         handleUpgrade={handleUpgrade}
         handleDowngrade={handleDowngrade}
         showNotification={showNotification}
-        // Pass user images for display
         showUserImage={true}
+        onUserDeleted={handleUserDeleted}
+        onShowUserDetails={handleShowUserDetails}
       />
 
       <UserManagementModals
@@ -291,6 +313,10 @@ const UserManagementPage = () => {
         currentUser={currentUser}
         promoteToAdmin={promoteToAdmin}
         demoteFromAdmin={demoteFromAdmin}
+      />
+      <UserDetailsModal
+        user={selectedUserForDetails}
+        onClose={handleCloseUserDetails}
       />
     </>
   );
