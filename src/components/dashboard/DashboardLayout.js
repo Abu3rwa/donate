@@ -183,7 +183,7 @@ const DashboardLayout = () => {
           hasPermission={useAuth().hasPermission}
         />
 
-        <main className="p-4 sm:p-6 lg:p-8 flex-1 pt-10 main-layout">
+        <main className="p-4 sm:p-6 lg:p-8 flex-1 pt-5 main-layout">
           <Routes>
             <Route index element={<DashboardOverview />} />
             <Route path="add-donation" element={<AddDonationForm />} />

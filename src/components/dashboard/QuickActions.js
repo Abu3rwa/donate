@@ -130,7 +130,7 @@ const ALL_ACTIONS = [
   },
   {
     name: "التقارير المالية",
-    permission: "manage_finances",
+    permission: "view_reports",
     link: "/dashboard/financial-reports",
     icon: (
       <svg
@@ -193,7 +193,7 @@ const ALL_ACTIONS = [
   },
   {
     name: "ملفات المنظمة",
-    permission: "manage_users", // All admins have this or 'all'
+    permission: "view_org_docs", // All admins have this or 'all'
     link: "/dashboard/organization-documents",
     icon: (
       <svg

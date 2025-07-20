@@ -2,11 +2,41 @@ import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import ModerationCommentThread from "./ModerationCommentThread";
 import { CATEGORY_LABELS } from "./labels";
+import { getUserById } from "../../services/userService";
 
 function ModerationDetailModal({ expense, onClose, onAction }) {
   const [comment, setComment] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [commentAdded, setCommentAdded] = useState(0);
+  const [submitter, setSubmitter] = useState(null);
+
+  useEffect(() => {
+    if (expense?.submittedBy) {
+      getUserById(expense.submittedBy).then((user) => setSubmitter(user));
+    } else {
+      setSubmitter(null);
+    }
+  }, [expense?.submittedBy]);
+
+  function formatDate(ts) {
+    if (!ts) return "غير متوفر";
+    if (ts.seconds && typeof ts.toDate === "function") {
+      return ts.toDate().toLocaleDateString("ar-EG", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+    const d = new Date(ts);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("ar-EG", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+    return "غير متوفر";
+  }
 
   const handleAction = async (actionType) => {
     if (actionType !== "comment" && !comment.trim()) {
@@ -101,7 +131,12 @@ function ModerationDetailModal({ expense, onClose, onAction }) {
                 المُقدِّم
               </label>
               <p className="text-gray-800 dark:text-gray-200">
-                {expense.submittedBy || "غير معروف"}
+                {submitter
+                  ? submitter.displayName ||
+                    submitter.name ||
+                    submitter.email ||
+                    expense.submittedBy
+                  : expense.submittedBy || "غير معروف"}
               </p>
             </div>
             <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg">
@@ -109,9 +144,7 @@ function ModerationDetailModal({ expense, onClose, onAction }) {
                 تاريخ التقديم
               </label>
               <p className="text-gray-800 dark:text-gray-200">
-                {expense.createdAt
-                  ? new Date(expense.createdAt).toLocaleDateString("ar-EG")
-                  : "-"}
+                {formatDate(expense.createdAt)}
               </p>
             </div>
           </div>
@@ -125,35 +158,24 @@ function ModerationDetailModal({ expense, onClose, onAction }) {
             </p>
           </div>
 
-          {expense.files && expense.files.length > 0 && (
+          {expense.billsUrl && (
             <div className="mb-4">
               <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 المرفقات
               </h4>
-              <div className="flex flex-wrap gap-2">
-                {expense.files.map((file, idx) => (
-                  <a
-                    key={idx}
-                    href={file.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-blue-200 dark:hover:bg-blue-900 transition flex items-center gap-1.5"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    {file.name || `مرفق ${idx + 1}`}
-                  </a>
-                ))}
-              </div>
+              <a
+                href={expense.billsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block"
+              >
+                <img
+                  src={expense.billsUrl}
+                  alt="المرفق"
+                  className="max-h-48 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition"
+                  style={{ objectFit: "contain" }}
+                />
+              </a>
             </div>
           )}
 

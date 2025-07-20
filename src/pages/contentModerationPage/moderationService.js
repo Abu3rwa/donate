@@ -60,7 +60,7 @@ export const moderationService = {
     }
   },
   // Approve an item
-  approveItem: async (type, id, comment, author) => {
+  approveItem: async (type, id, comment, author, authorId) => {
     try {
       const colName = COLLECTIONS[type];
       const commentColName = COMMENT_COLLECTIONS[type];
@@ -75,6 +75,7 @@ export const moderationService = {
           type: "approve",
           text: comment,
           author,
+          authorId,
           createdAt: new Date().toISOString(),
         });
       }
@@ -86,7 +87,7 @@ export const moderationService = {
   },
 
   // Reject an item
-  rejectItem: async (type, id, comment, author) => {
+  rejectItem: async (type, id, comment, author, authorId) => {
     try {
       const colName = COLLECTIONS[type];
       const commentColName = COMMENT_COLLECTIONS[type];
@@ -101,6 +102,7 @@ export const moderationService = {
           type: "reject",
           text: comment,
           author,
+          authorId,
           createdAt: new Date().toISOString(),
         });
       }

@@ -49,7 +49,10 @@ service cloud.firestore {
     function isVolunteerCoordinator() {
         return isSignedIn() && getUserData(request.auth.uid).adminType == "volunteer_coordinator";
     }
-
+  // Check if the signed-in user has the 'moderator' role.
+    function isContentModerator() {
+        return isSignedIn() && getUserData(request.auth.uid).adminType == "moderator";
+    }
     // Check if the signed-in user has the 'communication_manager' role.
     function isCommunicationManager() {
         return isSignedIn() && getUserData(request.auth.uid).adminType == "communication_manager";
@@ -61,106 +64,106 @@ service cloud.firestore {
     // - Publicly readable.
     // - Users can update their own data.
     // - Admins can create users.
-    // - Super Admins have full write access.
+    // - Super Admins and Website Admins have full write access.
     match /users/{userId} {
       allow read: if true;
-      allow create: if isSuperAdmin() || isAdmin() || (isSignedIn() && request.auth.uid == userId);
-      allow update: if isSuperAdmin() || isAdmin() || (isSignedIn() && request.auth.uid == userId);
-      allow delete: if isSuperAdmin();
+      allow create: if isSuperAdmin() || isWebsiteManger() || isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow update: if isSuperAdmin() || isWebsiteManger() || isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow delete: if isSuperAdmin() || isWebsiteManger();
     }
 
     // Organization Info:
     // - Publicly readable.
-    // - Writable by Super Admins and Admins.
+    // - Writable by Super Admins, Website Admins, Admins, and Communication Managers.
     match /organization/info {
       allow read: if true;
-      allow write: if isSuperAdmin() || isAdmin() || isCommunicationManager();
+      allow write: if isSuperAdmin() || isWebsiteManger() || isAdmin() || isCommunicationManager();
     }
 
     // Donations Collection:
     // - Publicly readable.
-    // - Writable by Super Admins, Donation Managers, and Finance Managers.
+    // - Writable by Super Admins, Website Admins, Donation Managers, and Finance Managers.
     match /donations/{donationId} {
       allow read: if true;
-      allow write: if isSuperAdmin() || isDonationManager() || isFinanceManager();
+      allow write: if isSuperAdmin() || isWebsiteManger() || isDonationManager() || isFinanceManager();
     }
 
     // Campaigns Collection:
     // - Publicly readable.
-    // - Writable by Super Admins and Campaign Managers.
+    // - Writable by Super Admins, Website Admins, and Campaign Managers.
     match /campaigns/{campaignId} {
       allow read: if true;
-      allow write: if isSuperAdmin() || isCampaignManager();
+      allow write: if isSuperAdmin() || isWebsiteManger() || isCampaignManager();
     }
     
     // Expenses Collection:
     // - Publicly readable.
-    // - Writable by Super Admins, Finance Managers, and Admins.
+    // - Writable by Super Admins, Website Admins, Finance Managers, and Admins.
     match /expenses/{expenseId} {
         allow read: if true;
-        allow write: if isSuperAdmin() || isFinanceManager() || isAdmin();
+        allow write: if isSuperAdmin() || isWebsiteManger() || isFinanceManager() || isAdmin();
     }
 
     // Bills Collection:
     // - Publicly readable.
-    // - Writable by Super Admins and Finance Managers.
+    // - Writable by Super Admins, Website Admins, and Finance Managers.
     match /bills/{billId} {
         allow read: if true;
-        allow write: if isSuperAdmin() || isFinanceManager();
+        allow write: if isSuperAdmin() || isWebsiteManger() || isFinanceManager();
     }
 
     // Receipts Collection:
     // - Publicly readable.
-    // - Writable by Super Admins, Finance Managers, and Donation Managers.
+    // - Writable by Super Admins, Website Admins, Finance Managers, and Donation Managers.
     match /receipts/{receiptId} {
         allow read: if true;
-        allow write: if isSuperAdmin() || isFinanceManager() || isDonationManager();
+        allow write: if isSuperAdmin() || isWebsiteManger() || isFinanceManager() || isDonationManager();
     }
 
     // Volunteers Collection:
     // - Publicly readable.
-    // - Writable by Super Admins and Volunteer Coordinators.
+    // - Writable by Super Admins, Website Admins, and Volunteer Coordinators.
     match /volunteers/{volunteerId} {
         allow read: if true;
-        allow write: if isSuperAdmin() || isVolunteerCoordinator();
+        allow write: if isSuperAdmin() || isWebsiteManger() || isVolunteerCoordinator();
     }
 
     // Expense Categories Collection:
     // - Publicly readable.
-    // - Writable by Super Admins and Finance Managers.
+    // - Writable by Super Admins, Website Admins, and Finance Managers.
     match /expense_categories/{categoryId} {
       allow read: if true;
-      allow write: if isSuperAdmin() || isFinanceManager();
+      allow write: if isSuperAdmin() || isWebsiteManger() || isFinanceManager();
     } 
      // Moderation Comments Collections:
     // - Readable by any signed-in user.
-    // - Writable by Super Admins and Admins.
+    // - Writable by Super Admins, Website Admins, Admins, and (for expense_comments) Content Moderators.
     match /expense_comments/{commentId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin() || isAdmin();
+      allow write: if isSuperAdmin() || isWebsiteManger() || isAdmin() || isContentModerator();
     }
     match /donation_comments/{commentId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin() || isAdmin();
+      allow write: if isSuperAdmin() || isWebsiteManger() || isAdmin();
     }
     match /campaign_comments/{commentId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin() || isAdmin();
+      allow write: if isSuperAdmin() || isWebsiteManger() || isAdmin();
     }
     match /post_comments/{commentId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin() || isAdmin();
+      allow write: if isSuperAdmin() || isWebsiteManger() || isAdmin();
     }
     match /story_comments/{commentId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin() || isAdmin();
+      allow write: if isSuperAdmin() || isWebsiteManger() || isAdmin();
     }
     // Communications Collection:
     // - Publicly readable.
-    // - Writable by Super Admins and Communication Managers.
+    // - Writable by Super Admins, Website Admins, and Communication Managers.
     match /communications/{communicationId} {
         allow read: if true;
-        allow write: if isSuperAdmin() || isCommunicationManager();
+        allow write: if isSuperAdmin() || isWebsiteManger() || isCommunicationManager();
     }
     // Org Files Collection:
     // - Publicly readable.
@@ -171,7 +174,7 @@ service cloud.firestore {
     }
   }
     match /databases/{database}/documents {
-    // Only super_admins can read/write users
+    // Only super_admins can read/write users 
     match /users/{userId} {
       allow read, write: if request.auth != null &&
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
